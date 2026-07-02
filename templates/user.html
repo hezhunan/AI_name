@@ -21,18 +21,22 @@
             background: #fff;
             padding: 28px;
             box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
+            margin-bottom: 24px;
         }
         .header-card h1 {
             margin: 0;
             color: #0f4a8a;
             font-size: clamp(1.5rem, 2.5vw, 2.5rem);
         }
+        .content-box {
+            display: flex;
+            gap: 20px;
+        }
         .back-text {
             font-size: 0.8rem;
             color: #0f4a8a;
             cursor: pointer;
             font-weight: 600;
-            margin-left: 1rem;
         }
         .back-text:hover {
             text-decoration: underline;
@@ -40,19 +44,49 @@
         }
         .grid {
             display: grid;
-            gap: 40px;
-            margin-top: 40px;
         }
         .card {
-            background: rgba(255, 255, 255, 0.92);
+            background: #ffffff;
             padding: 28px;
+            margin-bottom: 24px;
             box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
         }
-        .card h2 {
-            margin-top: 0;
-            color: #0f4a8a;
+        .card-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             border-bottom: 1px solid #e2e8f0;
             padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+        .card h2 {
+            margin: 0;
+            color: #0f4a8a;
+            font-size: 1.4rem;
+        }
+        .edit-btn {
+            padding: 8px 18px;
+            border: 1px solid #0f4a8a;
+            background: #fff;
+            color: #0f4a8a;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .edit-btn.active {
+            background: #0f4a8a;
+            color: #fff;
+        }
+        .batch-del-btn {
+            margin-top: 16px;
+            padding: 10px 24px;
+            background: #b91c1c;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: none;
+            font-size: 1rem;
         }
         .item-list {
             padding-left: 0;
@@ -63,6 +97,22 @@
             background: #f8fbff;
             border-radius: 12px;
             margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        /* 浏览记录条目可点击样式 */
+        .history-item-li {
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .history-item-li:hover {
+            background: #eef2ff;
+        }
+        .item-checkbox {
+            width: 18px;
+            height: 18px;
+            display: none;
         }
         .empty-tip {
             color: #64748b;
@@ -70,123 +120,373 @@
             padding: 30px 0;
             font-size: 1.05rem;
         }
-        .logout-wrap {
-            text-align: center;
-            margin-top: 60px;
-        }
-        .logout-btn {
-            border: none;
-            border-radius: 999px;
-            padding: 14px 40px;
-            background: #b91c1c;
-            color: #fff;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .logout-btn:hover {
-            background: #991b1b;
-            transform: translateY(-2px);
-            box-shadow: 0 12px 24px rgba(185, 28, 28, 0.2);
-        }
         .footer {
             text-align: center;
             color: #64748b;
             font-size: 0.95rem;
             margin-top: 80px;
         }
+        /* ========== 原有删除提示弹窗样式 ========== */
+        .modal-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-box {
+            background: #ffffff;
+            width: min(80%, 260px);
+            padding: 20px 18px;
+            border-radius: 16px;
+            box-shadow: 0 12px 48px rgba(0,0,0,0.18);
+        }
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-align: center;
+            margin: 0 0 12px;
+            color: #111;
+        }
+        .modal-desc {
+            font-size: 0.95rem;
+            color: #555;
+            text-align: center;
+            line-height: 1.5;
+            margin: 0 0 20px;
+        }
+        .modal-btn-row {
+            display: flex;
+            gap: 12px;
+        }
+        .modal-cancel-btn {
+            flex: 1;
+            padding: 10px 0;
+            border: none;
+            border-radius: 999px;
+            background: #eeeeee;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .modal-sure-btn {
+            flex: 1;
+            padding: 10px 0;
+            border: none;
+            border-radius: 999px;
+            background: #2c7be5;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .modal-single-row {
+            display: flex;
+            justify-content: center;
+        }
+        .modal-ok-btn {
+            padding: 10px 40px;
+            border: none;
+            border-radius: 999px;
+            background: #2c7be5;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        /* ========== 新增浏览记录详情弹窗样式 ========== */
+        .history-modal-mask {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .history-modal-box {
+            background: #fff;
+            width: min(100%, 820px);
+            max-height: 90vh;
+            overflow-y: auto;
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 12px 60px rgba(0,0,0,0.2);
+        }
+        .history-modal-close {
+            margin-top: 24px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .info-grid {
+            display: grid;
+            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            margin: 16px 0;
+        }
+        .tag {
+            background: #eef2ff;
+            color: #3730a3;
+            border-radius: 999px;
+            padding: 10px 16px;
+            text-align: center;
+        }
+        .suggestion {
+            padding: 18px;
+            background: #f8fbff;
+            border-left: 4px solid #2c7be5;
+            border-radius: 16px;
+            margin: 12px 0;
+        }
+        .suggestion h3 {
+            margin: 0 0 8px;
+            color: #0f172a;
+        }
+        .meta {
+            color: #475569;
+            line-height: 1.6;
+            margin: 6px 0;
+        }
+        .list {
+            padding-left: 18px;
+            color: #334155;
+        }
+        .list li {
+            margin-bottom: 8px;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- 顶部头部 -->
-        <div class="header-card">
-            <h1>个人中心</h1>
-            <div class="content-box">
-              <span class="back-text" onclick="goHomePage()">返回首页</span>
-              <span class="back-text" onclick="logout()">退出登录</span>
+    <!-- 删除确认弹窗 -->
+    <div class="modal-mask" id="confirmModal">
+        <div class="modal-box">
+            <h3 class="modal-title">提示</h3>
+            <p class="modal-desc" id="confirmText">确定删除选中的1条收藏？删除后无法恢复</p>
+            <div class="modal-btn-row">
+                <button class="modal-cancel-btn" onclick="closeConfirmModal()">取消</button>
+                <button class="modal-sure-btn" onclick="executeDelete()">确定</button>
             </div>
         </div>
-
-        <div class="grid">
-            <!-- 收藏记录卡片 -->
-            <div class="card">
-                <h2>我的收藏记录</h2>
-                <ul class="item-list" id="collectBox"></ul>
+    </div>
+    <!-- 操作成功提示弹窗 -->
+    <div class="modal-mask" id="tipModal">
+        <div class="modal-box">
+            <h3 class="modal-title">提示</h3>
+            <p class="modal-desc" id="tipText">删除收藏成功！</p>
+            <div class="modal-single-row">
+                <button class="modal-ok-btn" onclick="closeTipModal()">知道了</button>
             </div>
-            <!-- 浏览记录卡片 -->
+        </div>
+    </div>
+    <!-- 新增：浏览记录详情弹窗 -->
+    <div class="history-modal-mask" id="historyDetailModal">
+        <div class="history-modal-box">
+            <div id="historyModalContent"></div>
+            <button class="modal-ok-btn history-modal-close" onclick="closeHistoryModal()">关闭</button>
+        </div>
+    </div>
+    <div class="container">
+        <div class="header-card">
+            <h1 id="pageTitle">个人中心</h1>
+            <div class="content-box">
+                <span class="back-text" onclick="goHomePage()">返回首页</span>
+                <span class="back-text" onclick="logout()">退出登录</span>
+            </div>
+        </div>
+        <div class="grid">
+            <!-- 我的收藏 -->
             <div class="card">
-                <h2>我的浏览记录</h2>
+                <div class="card-head">
+                    <h2>我的收藏记录</h2>
+                    <button class="edit-btn" id="editCollectBtn" onclick="toggleEditMode()">编辑</button>
+                </div>
+                <ul class="item-list" id="collectBox"></ul>
+                <button class="batch-del-btn" id="batchDelBtn" onclick="openConfirmDialog()">删除</button>
+            </div>
+            <!-- 浏览记录 -->
+            <div class="card">
+                <h2>我的浏览记录（点击条目查看完整详情）</h2>
                 <ul class="item-list" id="historyBox"></ul>
             </div>
         </div>
-
-        <!-- 退出登录 -->
-        <div class="logout-wrap">
-            <button class="logout-btn" onclick="logout()">退出登录账号</button>
-        </div>
-
         <div class="footer">Powered by AI 起名引擎 · 兼顾传统文化与现代美学</div>
     </div>
-
 <script>
-    // 页面加载校验登录状态
-    window.onload = function() {
-        if(localStorage.getItem('isLogin') !== '1') {
-            window.location.href = '/login';
-        }
-        renderCollect();
-        renderHistory();
+    let editMode = false;
+    let deleteTargetList = [];
+    // 页面登录校验 + 读取用户名替换标题
+    window.onload = function () {
+      const path = window.location.pathname;
+      const whiteList = ['/login','/register','/guest'];
+      if(!whiteList.includes(path) && localStorage.getItem('isLogin') !== '1'){
+          window.location.href = '/login';
+      }
+      // 读取当前登录账号，获取对应用户名
+      const loginAcc = localStorage.getItem('loginAccount');
+      const nickMap = JSON.parse(localStorage.getItem('userNickMap') || '{}');
+      const nick = nickMap[loginAcc] || "用户";
+      document.getElementById('pageTitle').textContent = nick + " 的个人中心";
+      renderCollectList();
+      renderHistoryList();
     }
-
     // 返回首页
     function goHomePage() {
         window.location.href = '/index';
     }
-
-    // 退出登录
+    // 退出登录：清空登录账号
     function logout() {
         localStorage.removeItem('isLogin');
         localStorage.removeItem('loginUser');
+        localStorage.removeItem('loginAccount');
         localStorage.removeItem('collectNameList');
         localStorage.removeItem('historyList');
         document.cookie = "isLogin=;expires=0;path=/";
         window.location.href = '/login';
     }
-
-    // 渲染收藏列表
-    function renderCollect() {
-        const collectBox = document.getElementById('collectBox');
-        const list = JSON.parse(localStorage.getItem('collectNameList') || '[]');
-        if(list.length === 0) {
-            collectBox.innerHTML = '<div class="empty-tip">暂无收藏名字，前往首页收藏心仪名称</div>';
-            return;
+    // 切换收藏编辑模式
+    function toggleEditMode() {
+        editMode = !editMode;
+        const editBtn = document.getElementById('editCollectBtn');
+        const delBtn = document.getElementById('batchDelBtn');
+        const checkItems = document.querySelectorAll('.item-checkbox');
+        if (editMode) {
+            editBtn.innerText = "完成";
+            editBtn.classList.add('active');
+            delBtn.style.display = "block";
+            checkItems.forEach(cb => cb.style.display = "block");
+        } else {
+            editBtn.innerText = "编辑";
+            editBtn.classList.remove('active');
+            delBtn.style.display = "none";
+            checkItems.forEach(cb => {
+                cb.style.display = "none";
+                cb.checked = false;
+            })
         }
-        let html = '';
-        list.forEach(name=>{
-            html += `<li>收藏姓名：${name}</li>`;
-        })
-        collectBox.innerHTML = html;
     }
-
-    // 渲染浏览记录
-    function renderHistory() {
-        const historyBox = document.getElementById('historyBox');
-        const list = JSON.parse(localStorage.getItem('historyList') || '[]');
-        if(list.length === 0) {
-            historyBox.innerHTML = '<div class="empty-tip">暂无浏览记录，前往首页生成名字</div>';
+    // 删除收藏弹窗
+    function openConfirmDialog() {
+        const checkedBoxes = document.querySelectorAll('.item-checkbox:checked');
+        if (checkedBoxes.length === 0) {
+            document.getElementById('tipText').innerText = "请先勾选需要删除的收藏名称";
+            document.getElementById('tipModal').style.display = "flex";
             return;
         }
-        let html = '';
-        list.forEach(item=>{
-            html += `
+        deleteTargetList = Array.from(checkedBoxes).map(item => item.dataset.name);
+        document.getElementById('confirmText').innerText = `确定删除选中的${deleteTargetList.length}条收藏？删除后无法恢复`;
+        document.getElementById('confirmModal').style.display = "flex";
+    }
+    function closeConfirmModal() {
+        document.getElementById('confirmModal').style.display = "none";
+        deleteTargetList = [];
+    }
+    function closeTipModal() {
+        document.getElementById('tipModal').style.display = "none";
+    }
+    function executeDelete() {
+        let collectArr = JSON.parse(localStorage.getItem('collectNameList') || '[]');
+        collectArr = collectArr.filter(name => !deleteTargetList.includes(name));
+        localStorage.setItem('collectNameList', JSON.stringify(collectArr));
+        closeConfirmModal();
+        renderCollectList();
+        toggleEditMode();
+        document.getElementById('tipText').innerText = "删除收藏成功！";
+        document.getElementById('tipModal').style.display = "flex";
+        setTimeout(() => closeTipModal(), 2000);
+    }
+    // 渲染收藏列表（新增：根据收藏数量控制编辑按钮显隐）
+    function renderCollectList() {
+        const wrap = document.getElementById('collectBox');
+        const editBtn = document.getElementById('editCollectBtn');
+        const list = JSON.parse(localStorage.getItem('collectNameList') || '[]');
+        // 核心判断：无收藏隐藏编辑按钮，有收藏显示
+        if (list.length === 0) {
+            wrap.innerHTML = '<div class="empty-tip">暂无收藏名字，前往首页收藏心仪名称</div>';
+            editBtn.style.display = 'none';
+            return;
+        } else {
+            editBtn.style.display = 'block';
+        }
+        let htmlStr = "";
+        list.forEach(name => {
+            htmlStr += `
             <li>
-                <div>姓氏：${item.surname} | 性别：${item.gender==='male'?'男':'女'}</div>
-                <div>出生时间：${item.birth}</div>
-                <div class="meta">浏览时间：${item.time}</div>
-            </li>`;
+                <input type="checkbox" class="item-checkbox" data-name="${name}">
+                <span>收藏姓名：${name}</span>
+            </li>`
         })
-        historyBox.innerHTML = html;
+        wrap.innerHTML = htmlStr;
+        const allCb = document.querySelectorAll('.item-checkbox');
+        allCb.forEach(cb => cb.style.display = editMode ? "block" : "none");
+    }
+    // 渲染浏览记录
+    function renderHistoryList() {
+        const wrap = document.getElementById('historyBox');
+        const list = JSON.parse(localStorage.getItem('historyList') || '[]');
+        if (list.length === 0) {
+            wrap.innerHTML = '<div class="empty-tip">暂无浏览记录，前往首页生成名字</div>';
+            return;
+        }
+        let htmlStr = "";
+        list.forEach((item, idx) => {
+            htmlStr += `
+              <li class="history-item-li" onclick="openHistoryDetail(${idx})">
+                  <div>姓氏：${item.input.surname} | 性别：${item.input.gender === 'male' ? '男' : '女'}</div>
+                  <div>出生时间：${item.input.birth}</div>
+                  <div class="meta">浏览时间：${item.time}</div>
+              </li>`
+        })
+        wrap.innerHTML = htmlStr;
+    }
+    // 打开浏览记录详情弹窗
+    function openHistoryDetail(index) {
+        const historyList = JSON.parse(localStorage.getItem('historyList') || '[]');
+        const data = historyList[index];
+        const contentWrap = document.getElementById('historyModalContent');
+        let html = `
+        <h2 style="color:#0f4a8a;margin:0 0 16px;">起名完整详情</h2>
+        <div class="meta">
+            姓氏：${data.input.surname}
+            · 性别：${data.input.gender === 'male' ? '男宝' : '女宝'}
+            · 出生：${data.input.birth}
+            · 生成时间：${data.time}
+        </div>
+        <div class="info-grid">
+            <div class="tag">年柱 ${data.bazi.year}</div>
+            <div class="tag">月柱 ${data.bazi.month}</div>
+            <div class="tag">日柱 ${data.bazi.day}</div>
+            <div class="tag">时柱 ${data.bazi.hour}</div>
+        </div>
+        <div class="meta">
+            生肖：${data.bazi.zodiac}
+            · 本命五行：${data.bazi.birth_element}
+            · 时辰：${data.time_period}
+        </div>
+        <div class="meta">五行平衡分析：${data.bazi.balance}</div>
+        <ul class="list">`;
+        data.bazi.full_analysis.forEach(line => {
+            html += `<li>${line}</li>`;
+        })
+        html += `</ul>
+        <h3 style="margin:24px 0 12px;color:#0f4a8a;">推荐名字列表</h3>`;
+        data.suggestions.forEach(nameItem => {
+            html += `
+            <div class="suggestion">
+                <h3>${nameItem.name}</h3>
+                <p>${nameItem.meaning}</p>
+                <p class="meta">适配标签：${nameItem.source_tags.join('，')}</p>
+            </div>`;
+        });
+        contentWrap.innerHTML = html;
+        document.getElementById('historyDetailModal').style.display = 'flex';
+    }
+    // 关闭浏览详情弹窗
+    function closeHistoryModal() {
+        document.getElementById('historyDetailModal').style.display = 'none';
     }
 </script>
 </body>
