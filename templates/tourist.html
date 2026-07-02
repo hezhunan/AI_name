@@ -35,7 +35,7 @@
             text-decoration: underline;
             cursor:pointer;
         }
-        .grid { display: grid; gap: 40px; }
+        .grid { display: grid; gap: 40px; margin-bottom: 24px;}
         .card { background: rgba(255, 255, 255, 0.92); border: 1px solid rgba(15, 23, 42, 0.08); box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08); padding: 28px }
         .card h2 { margin-top: 0; color: #0f4a8a; }
         label { display: block; margin: 18px 0 8px; font-weight: 700; color: #334155; }
@@ -57,6 +57,34 @@
             color:#94a3b8;
             font-size:0.9rem;
         }
+        .restart-btn-wrap {
+            text-align: center;
+            margin-top: 30px;
+        }
+        /* 加载弹窗：移除外层灰色遮罩，仅弹窗自身半透明白色 */
+        .loading-mask {
+            position: fixed;
+            inset: 0;
+            display: none;
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+        }
+        .loading-box {
+            background: rgba(255,255,255,0.85);
+            padding: 24px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            width: auto;
+            height: auto;
+        }
+        .loading-text {
+            font-size: 1.5rem;
+            color: #0f4a8a;
+            font-weight: 600;
+            white-space: nowrap;
+        }
         @media (max-width: 860px) {
             .hero .card { flex-direction: column; gap: 20px; text-align: center; }
             .title-box { text-align: center; }
@@ -64,6 +92,13 @@
     </style>
 </head>
 <body>
+    <!-- 无外层灰色遮罩，仅居中半透明小弹窗 -->
+    <div class="loading-mask" id="loadingMask">
+        <div class="loading-box">
+            <div class="loading-text">正在生成中...</div>
+        </div>
+    </div>
+
     <div class="container">
         <section class="hero">
             <div class="card">
@@ -75,19 +110,32 @@
                 </div>
             </div>
         </section>
+
         <section class="grid">
+            <div class="card">
+                <h2>起名说明</h2>
+                <ul class="list">
+                    <li>支持复姓输入，自动处理两个汉字姓氏。</li>
+                    <li>结合出生时间与八字年、月、日、时柱形成详细分析。</li>
+                    <li>优选符合宝宝性别气质和五行平衡的名字。</li>
+                    <li>界面更清晰，呈现分析结果与推荐理由。</li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="grid" id="inputWrap" data-hide="{{ '1' if result else '0' }}">
             <div class="card">
                 <h2>输入信息</h2>
                 {% if error %}
                     <div class="error">{{ error }}</div>
                 {% endif %}
-                <form method="POST">
+                <form id="touristForm" method="POST">
                     <label for="surname">姓氏（支持复姓，例如：欧阳、司马）</label>
                     <input id="surname" name="surname" type="text" maxlength="2" placeholder="李 或 欧阳" value="{{ request.form.surname or '' }}" required>
                     <label for="gender">性别</label>
                     <select id="gender" name="gender">
                         <option value="male" {% if request.form.gender == 'male' %}selected{% endif %}>男</option>
-                        <option value="female" {% if request.form.gender != 'male' %}selected{% endif %}>女</option>
+                        <option value="female" {% if request.form.gender == 'female' %}selected{% endif %}>女</option>
                     </select>
                     <label for="birth">出生日期和时间</label>
                     <input id="birth" name="birth" type="datetime-local" value="{{ request.form.birth or '' }}" required>
@@ -95,61 +143,103 @@
                 </form>
             </div>
         </section>
-        {% if result %}
-        <section class="grid">
-            <div class="card">
-                <h2>起名说明</h2>
-                <ul class="list">
-                    <li>支持复姓输入，自动处理两个汉字姓氏。</li>
-                    <li>结合出生时间自动计算年份干支与对应生肖。</li>
-                    <li>优选符合宝宝性别气质和五行平衡的名字字义。</li>
-                </ul>
-            </div>
-        </section>
-        <section class="grid">
-            <div class="card">
-                <h2>八字详细分析</h2>
-                <div class="meta">姓氏：{{ result.input.surname }} · 性别：{{ '男' if result.input.gender == 'male' else '女' }} · 出生：{{ result.input.birth }}</div>
-                <div class="info-grid">
-                    <div class="tag">年柱：{{ result.bazi.year }}</div>
-                    <div class="tag">月柱：{{ result.bazi.month }}</div>
-                    <div class="tag">日柱：{{ result.bazi.day }}</div>
-                    <div class="tag">时柱：{{ result.bazi.hour }}</div>
+
+        <div id="resultContainer">
+            {% if result %}
+            <section class="grid">
+                <div class="card">
+                    <h2>八字详细分析</h2>
+                    <div class="meta">姓氏：{{ result.input.surname }} · 性别：{{ '男' if result.input.gender == 'male' else '女' }} · 出生：{{ result.input.birth }}</div>
+                    <div class="info-grid">
+                        <div class="tag">年柱：{{ result.bazi.year }}</div>
+                        <div class="tag">月柱：{{ result.bazi.month }}</div>
+                        <div class="tag">日柱：{{ result.bazi.day }}</div>
+                        <div class="tag">时柱：{{ result.bazi.hour }}</div>
+                    </div>
+                    <div class="meta">生肖：{{ result.bazi.zodiac }} · 五行：{{ result.bazi.birth_element }} · 时辰：{{ result.time_period }}</div>
+                    <div class="meta">分析：{{ result.bazi.balance }}</div>
+                    <div>
+                        <ul class="list">
+                            {% for item in result.bazi.full_analysis %}
+                                <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
                 </div>
-                <div class="meta">生肖：{{ result.bazi.zodiac }} · 五行：{{ result.bazi.birth_element }} · 时辰：{{ result.time_period }}</div>
-                <div class="meta">分析：{{ result.bazi.balance }}</div>
-                <div>
-                    <ul class="list">
-                        {% for item in result.bazi.full_analysis %}
-                            <li>{{ item }}</li>
-                        {% endfor %}
-                    </ul>
+            </section>
+            <section class="grid">
+                <div class="card">
+                    <h2>推荐名字</h2>
+                    <div class="meta">系统综合八字、时辰与五行，为宝宝精选吉祥名字。</div>
+                    <div id="nameListBox">
+                    {% for item in result.suggestions %}
+                    <div class="suggestion" data-name="{{ item.name }}">
+                        <h3>{{ item.name }} <span class="collect-disabled">游客不可收藏</span></h3>
+                        <p>{{ item.meaning }}</p>
+                        <p class="meta"><strong>影响因素：</strong>{{ item.source_tags | join('，') }}</p>
+                    </div>
+                    {% endfor %}
+                    </div>
+                    <div class="restart-btn-wrap">
+                        <button onclick="autoRegen()">重新生成</button>
+                    </div>
                 </div>
-            </div>
-        </section>
-        <section class="grid">
-            <div class="card">
-                <h2>推荐名字</h2>
-                <div class="meta">系统综合八字、时辰与五行，为宝宝精选吉祥名字。</div>
-                <div id="nameListBox">
-                {% for item in result.suggestions %}
-                <div class="suggestion" data-name="{{ item.name }}">
-                    <h3>{{ item.name }} <span class="collect-disabled">游客不可收藏</span></h3>
-                    <p>{{ item.meaning }}</p>
-                    <p class="meta"><strong>影响因素：</strong>{{ item.source_tags | join('，') }}</p>
-                </div>
-                {% endfor %}
-                </div>
-            </div>
-        </section>
-        {% endif %}
+            </section>
+            {% endif %}
+        </div>
+
         <div class="footer">Powered by AI 起名引擎 · 兼顾传统文化与现代美学</div>
     </div>
 <script>
+const TOURIST_CACHE_KEY = 'tourist_form_cache';
+const loadingMask = document.getElementById('loadingMask');
+let needRestoreCache = false;
+
 function goLogin() {
     window.location.href = "/login";
 }
-window.onload = function(){}
+function saveTouristCache() {
+    const surname = document.getElementById('surname').value;
+    const gender = document.getElementById('gender').value;
+    const birth = document.getElementById('birth').value;
+    localStorage.setItem(TOURIST_CACHE_KEY, JSON.stringify({surname, gender, birth}));
+}
+function restoreTouristCache() {
+    if (!needRestoreCache) return;
+    const cacheStr = localStorage.getItem(TOURIST_CACHE_KEY);
+    if (!cacheStr) return;
+    try {
+        const cache = JSON.parse(cacheStr);
+        document.getElementById('surname').value = cache.surname || '';
+        document.getElementById('gender').value = cache.gender || 'male';
+        document.getElementById('birth').value = cache.birth || '';
+    } catch (e) {
+        localStorage.removeItem(TOURIST_CACHE_KEY);
+    }
+    needRestoreCache = false;
+}
+// 重新生成：清空结果、回填表单，不弹窗、不提交，停留在输入页面
+function autoRegen() {
+    needRestoreCache = true;
+    const resultWrap = document.getElementById('resultContainer');
+    resultWrap.innerHTML = '';
+    document.getElementById('inputWrap').style.display = 'block';
+    restoreTouristCache();
+    // 不弹出加载遮罩、不自动提交表单
+}
+window.onload = function(){
+    loadingMask.style.display = 'none';
+    restoreTouristCache();
+    const inputWrap = document.getElementById('inputWrap');
+    if (inputWrap && inputWrap.dataset.hide === '1') {
+        inputWrap.style.display = 'none';
+    }
+}
+// 仅点击【生成宝宝名字】才保存缓存并弹出加载弹窗
+document.getElementById('touristForm').addEventListener('submit', saveTouristCache);
+document.getElementById('touristForm').addEventListener('submit', function(){
+    loadingMask.style.display = 'flex';
+});
 </script>
 </body>
 </html>

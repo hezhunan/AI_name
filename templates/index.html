@@ -14,7 +14,7 @@
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; background: radial-gradient(circle at top, #f6fbff 0%, #eef3f8 60%, #e2eaf5 100%); }
         .container { width: min(100%, 1100px); margin: 0 auto; padding: 24px; }
-        /* 顶部卡片flex两端布局：左标题，右个人中心文字 */
+        /* 顶部卡片flex两端布局 */
         .hero { padding: 24px 0; width: 100%; }
         .hero .card {
             display: flex;
@@ -26,7 +26,6 @@
             text-align: left;
         }
         .title-box h1 { margin: 0; font-size: clamp(1.5rem, 2.5vw, 2.5rem); color: #0f4a8a; }
-        /* 个人中心文字span样式 */
         .user-text {
             font-size: 0.8rem;
             color: #0f4a8a;
@@ -38,7 +37,6 @@
             text-decoration: underline;
             color: #2c7be5;
         }
-        /* 增大白色卡片间隔 */
         .grid { display: grid; gap: 40px; margin-bottom: 24px;}
         .card { background: rgba(255, 255, 255, 0.92); border: 1px solid rgba(15, 23, 42, 0.08); box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08); padding: 28px; }
         .card h2 { margin-top: 0; color: #0f4a8a; }
@@ -54,11 +52,9 @@
         .suggestion h3 { margin: 0; font-size: 1.2rem; color: #0f172a; display:flex; justify-content: space-between; align-items:center; }
         .suggestion p { margin: 0; color: #334155; line-height: 1.7; }
         .meta { color: #475569; margin-bottom: 10px; line-height: 1.6; }
-        .grid-2 { display: grid; gap: 28px; grid-template-columns: 1.5fr; }
         .list { padding-left: 18px; color: #334155; }
         .list li { margin-bottom: 10px; }
         .footer { text-align: center; color: #64748b; font-size: 0.95rem; margin-top: 8px; }
-        /* 五角星收藏按钮样式 */
         .star-btn {
             font-size: 32px;
             cursor: pointer;
@@ -70,34 +66,53 @@
             padding: 0;
             margin: 0;
         }
-        .star-empty {
-            color: #cccccc;
+        .star-empty { color: #cccccc; }
+        .star-fill { color: #ffcc00; }
+        .restart-btn-wrap { text-align: center; margin-top: 30px; }
+        /* 加载弹窗：无外层灰色遮罩，仅弹窗自身半透明白色背景 */
+        .loading-mask {
+            position: fixed;
+            inset: 0;
+            display: none;
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
         }
-        .star-fill {
-            color: #ffcc00;
+        .loading-box {
+            background: rgba(255,255,255,0.85);
+            padding: 24px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            width: auto;
+            height: auto;
         }
-        /* 重新生成按钮容器 */
-        .restart-btn-wrap {
-            text-align: center;
-            margin-top: 30px;
+        .loading-text {
+            font-size: 1.5rem;
+            color: #0f4a8a;
+            font-weight: 600;
+            white-space: nowrap;
         }
-        /* 移动端适配 */
         @media (max-width: 860px) {
-            .grid-2 { grid-template-columns: 1fr; }
             .hero .card { flex-direction: column; gap: 20px; text-align: center; }
             .title-box { text-align: center; }
         }
     </style>
 </head>
 <body>
+    <!-- 加载弹窗，无外层灰色遮罩 -->
+    <div class="loading-mask" id="loadingMask">
+        <div class="loading-box">
+            <div class="loading-text">正在生成中...</div>
+        </div>
+    </div>
+
     <div class="container">
         <section class="hero">
             <div class="card">
-                <!-- 左侧：系统名称+小字描述 -->
                 <div class="title-box">
                     <h1>AI 新生儿智能起名系统</h1>
                 </div>
-                <!-- 右侧：span文字跳转个人中心，无按钮样式 -->
                 <div class="content-box">
                     <span class="user-text" onclick="goUserPage()">个人中心</span>
                     <span class="user-text" onclick="logout()">退出登录</span>
@@ -115,15 +130,13 @@
                 </ul>
             </div>
         </section>
-
-        <!-- 原生后端POST表单，页面刷新提交 -->
-        <section class="grid" id="inputWrap">
+        <section class="grid" id="inputWrap" data-hide="{{ '1' if result else '0' }}">
             <div class="card">
                 <h2>输入信息</h2>
                 {% if error %}
                     <div class="error">{{ error }}</div>
                 {% endif %}
-                <form method="POST">
+                <form id="nameForm" method="POST">
                     <label for="surname">姓氏（支持复姓，例如：欧阳、司马）</label>
                     <input id="surname" name="surname" type="text" maxlength="2" placeholder="李 或 欧阳" value="{{ request.form.surname or '' }}" required>
                     <label for="gender">性别</label>
@@ -137,10 +150,8 @@
                 </form>
             </div>
         </section>
-
-        <!-- 后端Jinja渲染结果区域 -->
-        {% if result %}
         <div id="resultContainer">
+            {% if result %}
             <section class="grid">
                 <div class="card">
                     <h2>八字详细分析</h2>
@@ -180,69 +191,80 @@
                     {% endfor %}
                     </div>
                     <div class="restart-btn-wrap">
-                        <button onclick="resetPage()">重新生成</button>
+                        <button onclick="autoRegen()">重新生成</button>
                     </div>
                 </div>
             </section>
+            {% endif %}
         </div>
-        {% endif %}
-
         <div class="footer">Powered by AI 起名引擎 · 兼顾传统文化与现代美学</div>
     </div>
 <script>
-// 跳转个人页面
+const FORM_STORAGE_KEY = 'name_form_cache';
+const loadingMask = document.getElementById('loadingMask');
+let needRestoreCache = false;
+
 function goUserPage() {
     window.location.href = '/user';
 }
-// 登录校验：未登录强制跳转登录页
-window.onload = function () {
-    const path = window.location.pathname;
-    const whiteList = ['/login','/register','/tourist'];
-    if(!whiteList.includes(path) && localStorage.getItem('isLogin') !== '1'){
-        window.location.href = '/login';
-    }
-    refreshStarState();
-}
-// 退出登录
 function logout() {
     localStorage.removeItem('isLogin');
     localStorage.removeItem('loginUser');
     localStorage.removeItem('collectNameList');
     localStorage.removeItem('historyList');
+    localStorage.removeItem(FORM_STORAGE_KEY);
     document.cookie = "isLogin=;expires=0;path=/";
     window.location.href = '/login';
 }
-// 收藏本地存储工具
+function saveFormCache() {
+    const surname = document.getElementById('surname').value;
+    const gender = document.getElementById('gender').value;
+    const birth = document.getElementById('birth').value;
+    localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify({surname, gender, birth}));
+}
+function restoreFormCache() {
+    if (!needRestoreCache) return;
+    const cacheStr = localStorage.getItem(FORM_STORAGE_KEY);
+    if (!cacheStr) return;
+    try {
+        const cache = JSON.parse(cacheStr);
+        document.getElementById('surname').value = cache.surname || '';
+        document.getElementById('gender').value = cache.gender || 'male';
+        document.getElementById('birth').value = cache.birth || '';
+    } catch(e) {
+        localStorage.removeItem(FORM_STORAGE_KEY);
+    }
+    needRestoreCache = false;
+}
+// 重新生成：仅清空结果、显示输入框、回填表单，不弹窗、不自动提交
+function autoRegen() {
+    needRestoreCache = true;
+    // 清空所有八字、名字结果
+    const resultWrap = document.getElementById('resultContainer');
+    resultWrap.innerHTML = '';
+    // 显示输入区域
+    document.getElementById('inputWrap').style.display = 'block';
+    // 回填上次填写内容
+    restoreFormCache();
+    // 不弹出加载弹窗、不自动提交表单，停留在输入页（图2样式）
+}
 function getCollectList() {
     return JSON.parse(localStorage.getItem('collectNameList') || '[]');
 }
 function saveCollectList(list) {
     localStorage.setItem('collectNameList', JSON.stringify(list));
 }
-// 浏览记录工具
-function getHistoryList() {
-    return JSON.parse(localStorage.getItem('historyList') || '[]');
-}
-function saveHistoryList(list) {
-    localStorage.setItem('historyList', JSON.stringify(list));
-}
-// 点击五角星切换收藏
 function toggleStar(name) {
     let list = getCollectList();
     const idx = list.indexOf(name);
-    if(idx > -1) {
-        list.splice(idx, 1);
-    } else {
-        list.push(name);
-    }
+    if(idx > -1) list.splice(idx, 1);
+    else list.push(name);
     saveCollectList(list);
     refreshStarState();
 }
-// 刷新五角星填充状态
 function refreshStarState() {
     const list = getCollectList();
-    const stars = document.querySelectorAll('.star-btn');
-    stars.forEach(star => {
+    document.querySelectorAll('.star-btn').forEach(star => {
         const targetName = star.dataset.target;
         if(list.includes(targetName)) {
             star.innerText = "★";
@@ -255,10 +277,25 @@ function refreshStarState() {
         }
     })
 }
-// 重置页面：刷新页面清空结果
-function resetPage() {
-    window.location.href = "/index";
+window.onload = function () {
+    loadingMask.style.display = 'none';
+    const path = window.location.pathname;
+    const whiteList = ['/login','/register','/tourist'];
+    if(!whiteList.includes(path) && localStorage.getItem('isLogin') !== '1'){
+        window.location.href = '/login';
+    }
+    refreshStarState();
+    // 页面正常加载不自动回填缓存
+    const inputWrap = document.getElementById('inputWrap');
+    if (inputWrap && inputWrap.dataset.hide === '1') {
+        inputWrap.style.display = 'none';
+    }
 }
+// 仅点击【生成宝宝名字】才弹出加载并提交
+document.getElementById('nameForm').addEventListener('submit', function(){
+    saveFormCache();
+    loadingMask.style.display = 'flex';
+})
 </script>
 </body>
 </html>
