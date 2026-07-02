@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>账号注册 - AI新生儿智能起名系统</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: "Segoe UI", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+            background: #eef3f8;
+            color: #1f2937;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: radial-gradient(circle at top, #f6fbff 0%, #eef3f8 60%, #e2eaf5 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+        }
+        .container {
+            width: min(100%, 1200px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .card {
+            background: #ffffff;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 24px;
+            box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
+            padding: 48px 40px;
+            max-width: 780px;
+            width: 100%;
+        }
+        .header-text {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .header-text h1 {
+            margin: 0;
+            font-size: clamp(2.2rem, 4vw, 3.6rem);
+            color: #0f4a8a;
+            line-height: 1.2;
+        }
+        .reg-subtitle {
+            text-align: center;
+            font-size: 1.6rem;
+            color: #0f4a8a;
+            margin: -20px 0 36px;
+        }
+        label {
+            display: block;
+            margin: 20px 0 8px;
+            font-weight: 700;
+            color: #334155;
+            font-size: 1.05rem;
+        }
+        input {
+            width: 100%;
+            padding: 16px 18px;
+            border: 1px solid #cbd5e1;
+            border-radius: 14px;
+            background: #f8fafc;
+            font-size: 1rem;
+            color: #0f172a;
+        }
+        input:focus {
+            outline: none;
+            border-color: #0f4a8a;
+            box-shadow: 0 0 0 4px rgba(15, 74, 138, 0.12);
+        }
+        .btn-reg-full {
+            width: 40%;
+            margin-top: 30px;
+            margin-left: 30%;
+            border: none;
+            border-radius: 999px;
+            padding: 16px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            background: linear-gradient(135deg, #0f4a8a 0%, #2c7be5 100%);
+            color: #fff;
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+        .btn-reg-full:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 18px 30px rgba(15, 74, 138, 0.15);
+        }
+        .error {
+            color: #b91c1c;
+            margin: 16px 0;
+            font-weight: 600;
+            text-align: center;
+        }
+        .back-tip {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 1rem;
+        }
+        .back-link {
+            color: #2c7be5;
+            text-decoration: underline;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .footer {
+            text-align: center;
+            color: #64748b;
+            font-size: 0.95rem;
+            margin-top: 40px;
+        }
+        /* ========== 弹窗样式（精简按钮相关样式） ========== */
+        .modal-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.4);
+            display: none;
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-box {
+            background: #fff;
+            width: min(90%, 420px);
+            border-radius: 20px;
+            padding: 40px 28px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(15,23,42,0.15);
+        }
+        .modal-text {
+            font-size: 1.2rem;
+            color: #1f2937;
+            line-height: 1.6;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header-text">
+                <h1>AI 新生儿智能起名系统</h1>
+            </div>
+            <div class="reg-subtitle">账号注册</div>
+            <div class="error" id="msgTip"></div>
+            <label>登录账号（11位手机号）</label>
+            <input type="text" id="regAccount" placeholder="输入11位手机号作为登录账号">
+            <label>自定义用户名（支持中文/英文/数字/符号）</label>
+            <input type="text" id="regUsername" placeholder="自定义昵称">
+            <label>设置密码</label>
+            <input type="password" id="regPwd" placeholder="自定义密码">
+            <button class="btn-reg-full" onclick="doRegister()">注册账号</button>
+            <div class="back-tip">
+                已有账号？<span class="back-link" onclick="backLogin()">返回登录</span>
+            </div>
+        </div>
+        <div class="footer">Powered by AI 起名引擎 · 兼顾传统文化与现代美学</div>
+    </div>
+    <!-- 弹窗DOM：移除按钮组，仅保留文字 -->
+    <div class="modal-mask" id="modalMask">
+        <div class="modal-box">
+            <p class="modal-text" id="modalMsg"></p>
+        </div>
+    </div>
+<script>
+    // 弹窗控制函数
+    function showModalTip(text) {
+        document.getElementById('modalMsg').textContent = text;
+        document.getElementById('modalMask').style.display = 'flex';
+    }
+    function setTip(text) {
+        document.getElementById('msgTip').textContent = text;
+    }
+    async function doRegister() {
+        setTip('');
+        const account = document.getElementById('regAccount').value.trim();
+        const username = document.getElementById('regUsername').value.trim();
+        const pwd = document.getElementById('regPwd').value.trim();
+        if (!account || !username || !pwd) return setTip("账号、用户名、密码不能为空");
+        const reg = /^\d{11}$/;
+        if (!reg.test(account)) return setTip("登录账号必须是11位纯数字手机号");
+        const res = await fetch('/api/register', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({account: account, username: username, password: pwd})
+        })
+        const data = await res.json();
+        if(data.code === 200){
+            // 弹出注册成功弹窗
+            showModalTip("注册成功");
+            // 1秒后自动跳转登录页
+            setTimeout(() => {
+                window.location.href = "/login";
+            }, 1000);
+        }else{
+            setTip(data.msg);
+        }
+    }
+    function backLogin() {
+        window.location.href = "/login";
+    }
+</script>
+</body>
+</html>

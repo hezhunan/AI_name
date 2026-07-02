@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>游客模式 - AI新生儿智能起名系统</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: "Segoe UI", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+            background: #eef3f8;
+            color: #1f2937;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; background: radial-gradient(circle at top, #f6fbff 0%, #eef3f8 60%, #e2eaf5 100%); }
+        .container { width: min(100%, 1100px); margin: 0 auto; padding: 24px; }
+        .hero { padding: 24px 0; width: 100%; }
+        .hero .card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+        .title-box {
+            text-align: left;
+        }
+        .title-box h1 { margin: 0; font-size: clamp(1.5rem, 2.5vw, 2.5rem); color: #0f4a8a; }
+        .tip-text {
+            font-size: 0.9rem;
+            color: #b91c1c;
+            font-weight:600;
+        }
+        .login-link {
+            color: #2c7be5;
+            text-decoration: underline;
+            cursor:pointer;
+        }
+        .grid { display: grid; gap: 40px; }
+        .card { background: rgba(255, 255, 255, 0.92); border: 1px solid rgba(15, 23, 42, 0.08); box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08); padding: 28px }
+        .card h2 { margin-top: 0; color: #0f4a8a; }
+        label { display: block; margin: 18px 0 8px; font-weight: 700; color: #334155; }
+        input, select { width: 100%; padding: 14px 16px; border: 1px solid #cbd5e1; border-radius: 14px; background: #f8fafc; font-size: 1rem; color: #0f172a; }
+        input:focus, select:focus { outline: none; border-color: #0f4a8a; box-shadow: 0 0 0 4px rgba(15, 74, 138, 0.12); }
+        button { width: 100%; max-width: 260px; display: inline-flex; justify-content: center; align-items: center; gap: 10px; margin-top: 22px; border: none; border-radius: 999px; padding: 14px 20px; background: linear-gradient(135deg, #0f4a8a 0%, #2c7be5 100%); color: #fff; font-size: 1rem; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease; }
+        button:hover { transform: translateY(-1px); box-shadow: 0 18px 30px rgba(15, 74, 138, 0.2); }
+        .error { color: #b91c1c; margin-top: 12px; font-weight: 600; }
+        .info-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 16px; }
+        .tag { background: #eef2ff; color: #3730a3; border-radius: 999px; padding: 10px 16px; display: inline-flex; align-items: center; gap: 10px; font-size: .95rem; }
+        .suggestion { display: grid; gap: 10px; padding: 18px; background: #f8fbff; border-left: 4px solid #2c7be5; border-radius: 16px; }
+        .suggestion h3 { margin: 0; font-size: 1.2rem; color: #0f172a; display:flex; justify-content: space-between; align-items:center; }
+        .suggestion p { margin: 0; color: #334155; line-height: 1.7; }
+        .meta { color: #475569; margin-bottom: 10px; line-height: 1.6; }
+        .list { padding-left: 18px; color: #334155; }
+        .list li { margin-bottom: 10px; }
+        .footer { text-align: center; color: #64748b; font-size: 0.95rem; margin-top: 8px; }
+        .collect-disabled {
+            color:#94a3b8;
+            font-size:0.9rem;
+        }
+        @media (max-width: 860px) {
+            .hero .card { flex-direction: column; gap: 20px; text-align: center; }
+            .title-box { text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <section class="hero">
+            <div class="card">
+                <div class="title-box">
+                    <h1>AI 新生儿智能起名系统（游客模式）</h1>
+                </div>
+                <div class="content-box">
+                    <p class="tip-text">游客无法收藏、保存记录，<span class="login-link" onclick="goLogin()">登录账号解锁全部功能</span></p>
+                </div>
+            </div>
+        </section>
+        <section class="grid">
+            <div class="card">
+                <h2>输入信息</h2>
+                {% if error %}
+                    <div class="error">{{ error }}</div>
+                {% endif %}
+                <form method="POST">
+                    <label for="surname">姓氏（支持复姓，例如：欧阳、司马）</label>
+                    <input id="surname" name="surname" type="text" maxlength="2" placeholder="李 或 欧阳" value="{{ request.form.surname or '' }}" required>
+                    <label for="gender">性别</label>
+                    <select id="gender" name="gender">
+                        <option value="male" {% if request.form.gender == 'male' %}selected{% endif %}>男</option>
+                        <option value="female" {% if request.form.gender != 'male' %}selected{% endif %}>女</option>
+                    </select>
+                    <label for="birth">出生日期和时间</label>
+                    <input id="birth" name="birth" type="datetime-local" value="{{ request.form.birth or '' }}" required>
+                    <button type="submit">生成宝宝名字</button>
+                </form>
+            </div>
+        </section>
+        {% if result %}
+        <section class="grid">
+            <div class="card">
+                <h2>起名说明</h2>
+                <ul class="list">
+                    <li>支持复姓输入，自动处理两个汉字姓氏。</li>
+                    <li>结合出生时间自动计算年份干支与对应生肖。</li>
+                    <li>优选符合宝宝性别气质和五行平衡的名字字义。</li>
+                </ul>
+            </div>
+        </section>
+        <section class="grid">
+            <div class="card">
+                <h2>八字详细分析</h2>
+                <div class="meta">姓氏：{{ result.input.surname }} · 性别：{{ '男' if result.input.gender == 'male' else '女' }} · 出生：{{ result.input.birth }}</div>
+                <div class="info-grid">
+                    <div class="tag">年柱：{{ result.bazi.year }}</div>
+                    <div class="tag">月柱：{{ result.bazi.month }}</div>
+                    <div class="tag">日柱：{{ result.bazi.day }}</div>
+                    <div class="tag">时柱：{{ result.bazi.hour }}</div>
+                </div>
+                <div class="meta">生肖：{{ result.bazi.zodiac }} · 五行：{{ result.bazi.birth_element }} · 时辰：{{ result.time_period }}</div>
+                <div class="meta">分析：{{ result.bazi.balance }}</div>
+                <div>
+                    <ul class="list">
+                        {% for item in result.bazi.full_analysis %}
+                            <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </section>
+        <section class="grid">
+            <div class="card">
+                <h2>推荐名字</h2>
+                <div class="meta">系统综合八字、时辰与五行，为宝宝精选吉祥名字。</div>
+                <div id="nameListBox">
+                {% for item in result.suggestions %}
+                <div class="suggestion" data-name="{{ item.name }}">
+                    <h3>{{ item.name }} <span class="collect-disabled">游客不可收藏</span></h3>
+                    <p>{{ item.meaning }}</p>
+                    <p class="meta"><strong>影响因素：</strong>{{ item.source_tags | join('，') }}</p>
+                </div>
+                {% endfor %}
+                </div>
+            </div>
+        </section>
+        {% endif %}
+        <div class="footer">Powered by AI 起名引擎 · 兼顾传统文化与现代美学</div>
+    </div>
+<script>
+function goLogin() {
+    window.location.href = "/login";
+}
+window.onload = function(){}
+</script>
+</body>
+</html>

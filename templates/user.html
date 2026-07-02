@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>个人中心 - AI新生儿智能起名系统</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: "Segoe UI", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+            background: #eef3f8;
+            color: #1f2937;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; background: radial-gradient(circle at top, #f6fbff 0%, #eef3f8 60%, #e2eaf5 100%); }
+        .container { width: min(100%, 1100px); margin: 0 auto; padding: 24px; }
+        .header-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fff;
+            padding: 28px;
+            box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
+        }
+        .header-card h1 {
+            margin: 0;
+            color: #0f4a8a;
+            font-size: clamp(1.5rem, 2.5vw, 2.5rem);
+        }
+        .back-text {
+            font-size: 0.8rem;
+            color: #0f4a8a;
+            cursor: pointer;
+            font-weight: 600;
+            margin-left: 1rem;
+        }
+        .back-text:hover {
+            text-decoration: underline;
+            color: #2c7be5;
+        }
+        .grid {
+            display: grid;
+            gap: 40px;
+            margin-top: 40px;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.92);
+            padding: 28px;
+            box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
+        }
+        .card h2 {
+            margin-top: 0;
+            color: #0f4a8a;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 12px;
+        }
+        .item-list {
+            padding-left: 0;
+            list-style: none;
+        }
+        .item-list li {
+            padding: 12px 16px;
+            background: #f8fbff;
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+        .empty-tip {
+            color: #64748b;
+            text-align: center;
+            padding: 30px 0;
+            font-size: 1.05rem;
+        }
+        .logout-wrap {
+            text-align: center;
+            margin-top: 60px;
+        }
+        .logout-btn {
+            border: none;
+            border-radius: 999px;
+            padding: 14px 40px;
+            background: #b91c1c;
+            color: #fff;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .logout-btn:hover {
+            background: #991b1b;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(185, 28, 28, 0.2);
+        }
+        .footer {
+            text-align: center;
+            color: #64748b;
+            font-size: 0.95rem;
+            margin-top: 80px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部头部 -->
+        <div class="header-card">
+            <h1>个人中心</h1>
+            <div class="content-box">
+              <span class="back-text" onclick="goHomePage()">返回首页</span>
+              <span class="back-text" onclick="logout()">退出登录</span>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- 收藏记录卡片 -->
+            <div class="card">
+                <h2>我的收藏记录</h2>
+                <ul class="item-list" id="collectBox"></ul>
+            </div>
+            <!-- 浏览记录卡片 -->
+            <div class="card">
+                <h2>我的浏览记录</h2>
+                <ul class="item-list" id="historyBox"></ul>
+            </div>
+        </div>
+
+        <!-- 退出登录 -->
+        <div class="logout-wrap">
+            <button class="logout-btn" onclick="logout()">退出登录账号</button>
+        </div>
+
+        <div class="footer">Powered by AI 起名引擎 · 兼顾传统文化与现代美学</div>
+    </div>
+
+<script>
+    // 页面加载校验登录状态
+    window.onload = function() {
+        if(localStorage.getItem('isLogin') !== '1') {
+            window.location.href = '/login';
+        }
+        renderCollect();
+        renderHistory();
+    }
+
+    // 返回首页
+    function goHomePage() {
+        window.location.href = '/index';
+    }
+
+    // 退出登录
+    function logout() {
+        localStorage.removeItem('isLogin');
+        localStorage.removeItem('loginUser');
+        localStorage.removeItem('collectNameList');
+        localStorage.removeItem('historyList');
+        document.cookie = "isLogin=;expires=0;path=/";
+        window.location.href = '/login';
+    }
+
+    // 渲染收藏列表
+    function renderCollect() {
+        const collectBox = document.getElementById('collectBox');
+        const list = JSON.parse(localStorage.getItem('collectNameList') || '[]');
+        if(list.length === 0) {
+            collectBox.innerHTML = '<div class="empty-tip">暂无收藏名字，前往首页收藏心仪名称</div>';
+            return;
+        }
+        let html = '';
+        list.forEach(name=>{
+            html += `<li>收藏姓名：${name}</li>`;
+        })
+        collectBox.innerHTML = html;
+    }
+
+    // 渲染浏览记录
+    function renderHistory() {
+        const historyBox = document.getElementById('historyBox');
+        const list = JSON.parse(localStorage.getItem('historyList') || '[]');
+        if(list.length === 0) {
+            historyBox.innerHTML = '<div class="empty-tip">暂无浏览记录，前往首页生成名字</div>';
+            return;
+        }
+        let html = '';
+        list.forEach(item=>{
+            html += `
+            <li>
+                <div>姓氏：${item.surname} | 性别：${item.gender==='male'?'男':'女'}</div>
+                <div>出生时间：${item.birth}</div>
+                <div class="meta">浏览时间：${item.time}</div>
+            </li>`;
+        })
+        historyBox.innerHTML = html;
+    }
+</script>
+</body>
+</html>
