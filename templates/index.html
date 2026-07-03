@@ -106,7 +106,9 @@
             <div class="loading-text">正在生成中...</div>
         </div>
     </div>
-
+    <!-- 隐藏域：存放Jinja模板变量 -->
+    <input type="hidden" id="tempRecordId" value="{{ result.record_id if result else 0 }}">
+    <input type="hidden" id="tempFiveAttr" value="{{ result.bazi.birth_element if result else '' }}">
     <div class="container">
         <section class="hero">
             <div class="card">
@@ -124,7 +126,7 @@
                 <h2>起名说明</h2>
                 <ul class="list">
                     <li>支持复姓输入，自动处理两个汉字姓氏。</li>
-                    <li>结合出生时间与八字年、月、日、时柱形成详细分析。</li>
+                    <li>结合出生时间与八字年、月、时柱形成详细分析。</li>
                     <li>优选符合宝宝性别气质和五行平衡的名字。</li>
                     <li>界面更清晰，呈现分析结果与推荐理由。</li>
                 </ul>
@@ -137,6 +139,8 @@
                     <div class="error">{{ error }}</div>
                 {% endif %}
                 <form id="nameForm" method="POST">
+                    <!-- 兜底传登录UID给后端 -->
+                    <input type="hidden" name="front_login_uid" id="hiddenLoginUid">
                     <label for="surname">姓氏（支持复姓，例如：欧阳、司马）</label>
                     <input id="surname" name="surname" type="text" maxlength="2" placeholder="李 或 欧阳" value="{{ request.form.surname or '' }}" required>
                     <label for="gender">性别</label>
@@ -162,8 +166,8 @@
                         <div class="tag">日柱：{{ result.bazi.day }}</div>
                         <div class="tag">时柱：{{ result.bazi.hour }}</div>
                     </div>
-                    <div class="meta">生肖：{{ result.bazi.zodiac }} · 五行：{{ result.bazi.birth_element }} · 时辰：{{ result.time_period }}</div>
-                    <div class="meta">分析：{{ result.bazi.balance }}</div>
+                    <div class="meta">生肖：{{ result.bazi.zodiac }} · 五行：{{ result.birth_element }} · 时辰：{{ result.time_period }}</div>
+                    <div class="meta">分析：{{ result.balance }}</div>
                     <div>
                         <ul class="list">
                             {% for item in result.bazi.full_analysis %}
@@ -183,7 +187,8 @@
                     <div class="suggestion" data-name="{{ item.name }}">
                         <h3>
                             {{ item.name }}
-                            <span class="star-btn star-empty" data-target="{{ item.name }}" onclick="toggleStar('{{ item.name }}')">☆</span>
+                            <!-- 移除行内onclick，改用全局事件委托解决点击失效 -->
+                            <span class="star-btn star-empty" data-target="{{ item.name }}">☆</span>
                         </h3>
                         <p>{{ item.meaning }}</p>
                         <p class="meta"><strong>影响因素：</strong>{{ item.source_tags | join('，') }}</p>
@@ -203,17 +208,31 @@
 const FORM_STORAGE_KEY = 'name_form_cache';
 const loadingMask = document.getElementById('loadingMask');
 let needRestoreCache = false;
+let globalRecordId = 0;
+let globalFiveAttr = "";
+
+// 页面加载初始化变量、填充隐藏UID
+document.addEventListener('DOMContentLoaded', function(){
+    const ridInput = document.getElementById('tempRecordId');
+    const fiveInput = document.getElementById('tempFiveAttr');
+    if(ridInput) globalRecordId = parseInt(ridInput.value) || 0;
+    if(fiveInput) globalFiveAttr = fiveInput.value;
+    const uid = localStorage.getItem("loginUid") || "";
+    document.getElementById("hiddenLoginUid").value = uid;
+});
 
 function goUserPage() {
     window.location.href = '/user';
 }
 function logout() {
     localStorage.removeItem('isLogin');
-    localStorage.removeItem('loginUser');
+    localStorage.removeItem('loginUid');
+    localStorage.removeItem('loginName');
+    localStorage.removeItem('loginAccount');
     localStorage.removeItem('collectNameList');
     localStorage.removeItem('historyList');
     localStorage.removeItem(FORM_STORAGE_KEY);
-    document.cookie = "isLogin=;expires=0;path=/";
+    document.cookie = "loginUid=;expires=0;path=/;isLogin=;expires=0;path=/";
     window.location.href = '/login';
 }
 function saveFormCache() {
@@ -227,7 +246,7 @@ function restoreFormCache() {
     const cacheStr = localStorage.getItem(FORM_STORAGE_KEY);
     if (!cacheStr) return;
     try {
-        const cache = JSON.parse(cacheStr);
+        const cache = JSON.parse(cache);
         document.getElementById('surname').value = cache.surname || '';
         document.getElementById('gender').value = cache.gender || 'male';
         document.getElementById('birth').value = cache.birth || '';
@@ -236,62 +255,110 @@ function restoreFormCache() {
     }
     needRestoreCache = false;
 }
-// 重新生成：仅清空结果、显示输入框、回填表单，不弹窗、不自动提交
 function autoRegen() {
     needRestoreCache = true;
-    // 清空所有八字、名字结果
     const resultWrap = document.getElementById('resultContainer');
     resultWrap.innerHTML = '';
-    // 显示输入区域
     document.getElementById('inputWrap').style.display = 'block';
-    // 回填上次填写内容
     restoreFormCache();
-    // 不弹出加载弹窗、不自动提交表单，停留在输入页（图2样式）
 }
-function getCollectList() {
-    return JSON.parse(localStorage.getItem('collectNameList') || '[]');
+
+// 收藏核心函数（补齐所有闭合大括号，修复语法报错）
+async function toggleStar(name) {
+    console.log("触发收藏，名字：", name);
+    const loginUid = localStorage.getItem("loginUid");
+    if (!loginUid) {
+        alert("请先登录");
+        return;
+    }
+    // 获取当前名字外层容器
+    const wrapDom = document.querySelector(`.suggestion[data-name="${name}"]`);
+    if (!wrapDom) {
+        alert("页面渲染异常，请刷新页面重试");
+        return;
+    }
+    const meaningText = wrapDom.querySelector("p").innerText.trim();
+    if (!meaningText) {
+        alert("无法读取名字释义");
+        return;
+    }
+    if (!globalRecordId || globalRecordId === 0) {
+        alert("请完整生成八字后再收藏名字");
+        return;
+    }
+    try {
+        const res = await fetch("/api/collect/add", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({
+                user_id: parseInt(loginUid),
+                full_name: name,
+                meaning: meaningText,
+                five_attr: globalFiveAttr,
+                record_id: globalRecordId
+            })
+        })
+        const data = await res.json();
+        alert(data.msg);
+        await refreshStarState();
+    } catch (err) {
+        console.error("收藏接口异常：", err);
+        alert("收藏失败，请检查网络或重新生成记录");
+    }
 }
-function saveCollectList(list) {
-    localStorage.setItem('collectNameList', JSON.stringify(list));
+
+// 全局事件委托：监听所有星星点击，彻底解决动态渲染按钮失效
+document.addEventListener("click", function(e) {
+    const targetStar = e.target.closest(".star-btn");
+    if (targetStar) {
+        const targetName = targetStar.dataset.target;
+        toggleStar(targetName);
+    }
+});
+
+// 刷新星星填充状态
+async function refreshStarState() {
+    const loginUid = localStorage.getItem("loginUid");
+    if (!loginUid) return;
+    try {
+        const res = await fetch("/api/collect/list", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({user_id: parseInt(loginUid)})
+        })
+        const data = await res.json();
+        const savedNames = data.data.map(item => item.full_name);
+        document.querySelectorAll('.star-btn').forEach(star => {
+            const name = star.dataset.target;
+            if (savedNames.includes(name)) {
+                star.innerText = "★";
+                star.classList.remove('star-empty');
+                star.classList.add('star-fill');
+            } else {
+                star.innerText = "☆";
+                star.classList.remove('star-fill');
+                star.classList.add('star-empty');
+            }
+        })
+    } catch (err) {
+        console.error("刷新收藏状态失败：", err);
+    }
 }
-function toggleStar(name) {
-    let list = getCollectList();
-    const idx = list.indexOf(name);
-    if(idx > -1) list.splice(idx, 1);
-    else list.push(name);
-    saveCollectList(list);
-    refreshStarState();
-}
-function refreshStarState() {
-    const list = getCollectList();
-    document.querySelectorAll('.star-btn').forEach(star => {
-        const targetName = star.dataset.target;
-        if(list.includes(targetName)) {
-            star.innerText = "★";
-            star.classList.remove('star-empty');
-            star.classList.add('star-fill');
-        } else {
-            star.innerText = "☆";
-            star.classList.remove('star-fill');
-            star.classList.add('star-empty');
-        }
-    })
-}
-window.onload = function () {
+
+window.onload = async function () {
     loadingMask.style.display = 'none';
     const path = window.location.pathname;
     const whiteList = ['/login','/register','/tourist'];
     if(!whiteList.includes(path) && localStorage.getItem('isLogin') !== '1'){
         window.location.href = '/login';
     }
-    refreshStarState();
-    // 页面正常加载不自动回填缓存
+    await refreshStarState();
     const inputWrap = document.getElementById('inputWrap');
     if (inputWrap && inputWrap.dataset.hide === '1') {
         inputWrap.style.display = 'none';
     }
 }
-// 仅点击【生成宝宝名字】才弹出加载并提交
+// 表单提交弹窗加载
 document.getElementById('nameForm').addEventListener('submit', function(){
     saveFormCache();
     loadingMask.style.display = 'flex';

@@ -3,10 +3,10 @@ import sys
 import os
 sys.stdout.reconfigure(encoding="utf-8")
 os.environ["PYTHONIOENCODING"] = "utf-8"
-
 from flask import Flask, render_template, request, jsonify, redirect
 import random
 import json
+import traceback
 import db
 from api import api_bp
 from zhipuai import ZhipuAI
@@ -16,11 +16,10 @@ import calendar
 app = Flask(__name__)
 app.register_blueprint(api_bp, url_prefix="/api")
 
-# ===================== 智谱SDK配置 =====================
+# 智谱SDK配置
 ZHIPU_API_KEY = "00e172fcad8844afae3531c0123758eb.LWb2F0bsOK2IOd1n"
 client = ZhipuAI(api_key=ZHIPU_API_KEY)
 
-# ===================== 1. 本地八字排盘核心算法（关键新增） =====================
 # 天干地支基础表
 TIAN_GAN = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
 DI_ZHI = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
@@ -30,7 +29,7 @@ ZODIAC_MAP = {
     "申": "猴", "酉": "鸡", "戌": "狗", "亥": "猪"
 }
 
-# 节气交接日（2000-2030简化版，用于月柱划分）
+# 节气交接日（2000-2030简化版）
 SOLAR_TERM_DAY = {
     1: [4, 19],
     2: [3, 18],
@@ -46,7 +45,7 @@ SOLAR_TERM_DAY = {
     12: [6, 21],
 }
 
-# 时辰对照表 23-1子,1-3丑...13-15未
+# 时辰对照表
 SHI_CHEN_MAP = [
     ("子", 23, 0), ("丑", 1, 2), ("寅", 3, 4), ("卯", 5, 6),
     ("辰", 7, 8), ("巳", 9, 10), ("午", 11, 12), ("未", 13, 14),
@@ -54,7 +53,6 @@ SHI_CHEN_MAP = [
 ]
 
 def get_year_gz(year):
-    """计算年柱干支"""
     base = 4
     idx = (year - base) % 60
     g = idx % 10
@@ -62,12 +60,10 @@ def get_year_gz(year):
     return TIAN_GAN[g] + DI_ZHI[z]
 
 def get_month_gz(year, month, day):
-    """计算月柱干支，按节气划分月令"""
     year_g = get_year_gz(year)[0]
     year_g_idx = TIAN_GAN.index(year_g)
     m_base = [2, 4, 6, 8, 0, 2, 4, 6, 8, 0, 2, 4]
     m_start_idx = m_base[year_g_idx]
-    # 判断是否过当月第一个节气
     cut_day = SOLAR_TERM_DAY[month][0]
     if day >= cut_day:
         m_idx = m_start_idx + month - 1
@@ -78,23 +74,20 @@ def get_month_gz(year, month, day):
     return TIAN_GAN[g] + DI_ZHI[z]
 
 def get_day_gz(year, month, day):
-    """精准日柱干支计算（2000-2030有效）"""
     base_date = date(2000, 1, 1)
     target = date(year, month, day)
     delta = (target - base_date).days
-    base_gz = 16  # 2000-01-01 甲子(0)偏移16
+    base_gz = 16
     total = base_gz + delta
     g = total % 10
     z = total % 12
     return TIAN_GAN[g] + DI_ZHI[z]
 
 def get_shichen_gz(year, month, day, hour):
-    """时柱干支"""
     day_g = get_day_gz(year, month, day)[0]
     day_g_idx = TIAN_GAN.index(day_g)
     shi_base = [0, 2, 4, 6, 8, 0, 2, 4, 6, 8]
     shi_start = shi_base[day_g_idx]
-    # 匹配时辰地支
     shi_zhi = ""
     for z_name, h1, h2 in SHI_CHEN_MAP:
         if h1 <= hour <= h2:
@@ -104,8 +97,8 @@ def get_shichen_gz(year, month, day, hour):
     g_idx = (shi_start + z_idx) % 10
     return TIAN_GAN[g_idx] + shi_zhi, shi_zhi
 
+# 修复参数缺失
 def get_full_birth_pillar(dt: datetime):
-    """输入datetime对象，返回完整四柱、生肖、时辰文字"""
     y = dt.year
     m = dt.month
     d = dt.day
@@ -125,7 +118,7 @@ def get_full_birth_pillar(dt: datetime):
         "time_period": hour_text
     }
 
-# 本地兜底起名（API失败备用）
+# 兜底起名
 def local_fallback_name(surname, target_five):
     words = db.get_five_words(target_five)
     poems = db.get_all_poems()
@@ -143,13 +136,12 @@ def local_fallback_name(surname, target_five):
         })
     return res
 
-# 智谱大模型调用：仅传入固定四柱，只做喜用神分析+起名，不再排盘
+# AI命理起名
 def glm_analysis_name(surname, gender, pillar_info):
     print("===== Start Zhipu GLM API Call =====")
     print(f"Params: surname={surname}, gender={gender}, pillar={pillar_info}")
-
     system_prompt = """
-你是专业传统八字命理起名大师，四柱八字已经由系统精准计算完毕，你只负责分析旺衰、确定唯一喜用神、生成全新不重复的名字。
+你是专业传统八字命理起名大师，四柱八字已由系统精准计算完毕，你只负责分析旺衰、确定唯一喜用神、生成全新不重复名字。
 硬性强制规则，必须严格遵守：
 1. 给定四柱不可修改，只基于固定八字分析；
 2. 根据八字旺衰得出唯一喜用神（金/木/水/火/土其中一个）；
@@ -184,7 +176,7 @@ JSON固定结构：
 约束：
 - full_analysis 固定4条；suggestions固定3个名字；
 - 严禁重复名字、重复寓意、重复标签文案；
-- 绝对不允许修改传入的四柱干支，仅做命理分析与起名创作。
+- 绝对不允许修改传入的四柱干支，仅做命理分析起名。
 """
     user_prompt = f"""
 姓氏：{surname}
@@ -208,11 +200,9 @@ JSON固定结构：
         model_content = response.choices[0].message.content.strip()
         print("Model raw output:", model_content)
         data = json.loads(model_content)
-        # 校验五行合法性
         valid_five = ["金", "木", "水", "火", "土"]
         if data.get("birth_element") not in valid_five:
             raise Exception("模型返回五行不合法")
-        # 强制覆盖四柱，防止AI篡改排盘
         data["year"] = pillar_info["year"]
         data["month"] = pillar_info["month"]
         data["day"] = pillar_info["day"]
@@ -220,7 +210,6 @@ JSON固定结构：
         return data
     except Exception as e:
         print(f"Zhipu API Exception: {str(e)}")
-        # 兜底应急方案
         fallback_five = random.choice(["金", "木", "水", "火", "土"])
         fallback_suggest = local_fallback_name(surname, fallback_five)
         return {
@@ -238,8 +227,8 @@ JSON固定结构：
             ],
             "suggestions": fallback_suggest
         }
-    
-# ===================== 页面路由 =====================
+
+# 页面路由
 @app.route("/")
 def root_redirect():
     return redirect("/login")
@@ -252,25 +241,51 @@ def login_page():
 def register_page():
     return render_template("register.html")
 
-# 登录用户主页 /index
+# 首页起名页面（双重UID校验+完整日志打印）
 @app.route("/index", methods=["GET", "POST"])
 def index_page():
     result = None
     error = None
+    current_record_id = 0
     if request.method == "POST":
         sur = request.form.get("surname", "").strip()
         gender = request.form.get("gender")
         birth_str = request.form.get("birth")
+        front_login_uid = request.form.get("front_login_uid", "")
         if not sur or not birth_str:
             error = "姓氏与出生时间不能为空"
         else:
-            # 1. 前端datetime-local格式：2026-07-02T13:53
             birth_dt = datetime.strptime(birth_str, "%Y-%m-%dT%H:%M")
-            # 2. 本地精准计算四柱，固定不变
             pillar = get_full_birth_pillar(birth_dt)
-            # 3. 传给AI分析喜用神、生成名字
             ai_res = glm_analysis_name(sur, gender, pillar)
-            # 4. 组装渲染数据
+            login_uid = request.cookies.get("loginUid", "")
+            print("=== Cookie loginUid:", repr(login_uid))
+            print("=== 表单传入UID:", repr(front_login_uid))
+            real_uid = 0
+            if login_uid.isdigit():
+                real_uid = int(login_uid)
+            elif front_login_uid.isdigit():
+                real_uid = int(front_login_uid)
+            if real_uid > 0:
+                try:
+                    input_info = {
+                        "surname": sur,
+                        "gender": gender,
+                        "birth": birth_str
+                    }
+                    analysis_info = {
+                        "birth_element": ai_res["birth_element"],
+                        "balance": ai_res["balance"],
+                        "full_analysis": ai_res["full_analysis"],
+                        "suggestions": ai_res["suggestions"]
+                    }
+                    current_record_id = db.add_full_search_record(real_uid, input_info, pillar, analysis_info)
+                    print("✅ 数据库插入成功,记录ID:", current_record_id)
+                except Exception as e:
+                    print("❌ 数据库写入异常:")
+                    traceback.print_exc()
+            else:
+                print("⚠️ 无有效登录ID，跳过存储")
             bazi_data = {
                 "year": pillar["year"],
                 "month": pillar["month"],
@@ -285,11 +300,12 @@ def index_page():
                 "input": {"surname": sur, "gender": gender, "birth": birth_str},
                 "bazi": bazi_data,
                 "time_period": pillar["time_period"],
-                "suggestions": ai_res["suggestions"]
+                "suggestions": ai_res["suggestions"],
+                "record_id": current_record_id
             }
     return render_template("index.html", result=result, error=error)
 
-# 游客页面 /tourist
+# 游客页面（不存储，无修改）
 @app.route("/tourist", methods=["GET", "POST"])
 def tourist_page():
     result = None
@@ -320,8 +336,9 @@ def tourist_page():
                 "time_period": pillar["time_period"],
                 "suggestions": ai_res["suggestions"]
             }
-    return render_template("tourist.html", result=result, error=error)
+    return render_template("tourist.html", result=result)
 
+# 个人中心
 @app.route("/user")
 def user_center():
     return render_template("user.html")
