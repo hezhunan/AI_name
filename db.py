@@ -19,6 +19,12 @@ def get_user_by_account(account):
     conn.close()
     return dict(row) if row else None
 
+def get_user_by_id(uid):
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM user WHERE id = ?", (uid,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
 def add_user(account, username, password):
     conn = get_conn()
     try:
@@ -99,13 +105,17 @@ def get_full_search_by_record_id(record_id, user_id):
         conn.close()
         return None
     main_data = dict(main_row)
-    main_data["full_analysis"] = json.loads(main_data["full_analysis"])
+    main_data["full_analysis"] = json.loads(main_data["full_analysis"]) if main_data["full_analysis"] else []
+    
+    # 读取名字子表
     name_rows = conn.execute("SELECT * FROM search_name_item WHERE record_id = ?", (record_id,)).fetchall()
     name_list = []
     for r in name_rows:
         d = dict(r)
-        d["source_tags"] = json.loads(d["source_tags"])
+        d["source_tags"] = json.loads(d["source_tags"]) if d["source_tags"] else []
         name_list.append(d)
+    
+    # 关键缺失：把名字列表塞进主数据，前端才能读到
     main_data["suggestions"] = name_list
     conn.close()
     return main_data
@@ -141,6 +151,14 @@ def batch_del_collect(user_id, del_ids):
     place = ",".join(["?"]*len(del_ids))
     sql = f"DELETE FROM collect_name WHERE user_id = ? AND id IN ({place})"
     conn.execute(sql, [user_id] + del_ids)
+    conn.commit()
+    conn.close()
+
+# 新增：根据用户ID+名字 删除单条收藏（取消收藏专用）
+def remove_collect_item(user_id, full_name):
+    conn = get_conn()
+    sql = "DELETE FROM collect_name WHERE user_id = ? AND full_name = ?"
+    conn.execute(sql, (user_id, full_name))
     conn.commit()
     conn.close()
 

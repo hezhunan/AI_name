@@ -84,7 +84,14 @@ def get_day_gz(year, month, day):
     return TIAN_GAN[g] + DI_ZHI[z]
 
 def get_shichen_gz(year, month, day, hour):
-    day_g = get_day_gz(year, month, day)[0]
+    day_gz_str = get_day_gz(year, month, day)
+    # 兜底日柱干支为空
+    if not day_gz_str or len(day_gz_str) < 1:
+        day_gz_str = "甲子"
+    day_g = day_gz_str[0]
+    # 校验天干非法兜底甲
+    if day_g not in TIAN_GAN:
+        day_g = "甲"
     day_g_idx = TIAN_GAN.index(day_g)
     shi_base = [0, 2, 4, 6, 8, 0, 2, 4, 6, 8]
     shi_start = shi_base[day_g_idx]
@@ -93,6 +100,9 @@ def get_shichen_gz(year, month, day, hour):
         if h1 <= hour <= h2:
             shi_zhi = z_name
             break
+    # 关键修复：匹配不到时辰强制赋值子，杜绝空字符串""
+    if not shi_zhi:
+        shi_zhi = "子"
     z_idx = DI_ZHI.index(shi_zhi)
     g_idx = (shi_start + z_idx) % 10
     return TIAN_GAN[g_idx] + shi_zhi, shi_zhi
@@ -341,7 +351,18 @@ def tourist_page():
 # 个人中心
 @app.route("/user")
 def user_center():
-    return render_template("user.html")
+    login_uid = request.cookies.get("loginUid", "")
+    username = "游客"
+    try:
+        if login_uid.isdigit():
+            uid = int(login_uid)
+            user_info = db.get_user_by_id(uid)
+            if user_info and "username" in user_info:
+                username = user_info["username"]
+    except Exception as e:
+        # 数据库查询出错，兜底游客
+        username = "游客"
+    return render_template("user.html", username=username)
 
 if __name__ == "__main__":
     app.run(debug=True)

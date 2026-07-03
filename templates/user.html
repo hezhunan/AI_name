@@ -3,7 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>个人中心 - AI新生儿智能起名系统</title>
+    <!-- 修改1：标题使用转义过滤 -->
+    <title>{{ username|e }} - AI新生儿智能起名系统</title>
     <style>
         :root {
             color-scheme: light;
@@ -125,6 +126,7 @@
             font-size: 0.95rem;
             margin-top: 80px;
         }
+        /* 弹窗样式与登录弹窗完全匹配 */
         .modal-mask {
             position: fixed;
             top: 0;
@@ -138,16 +140,16 @@
             justify-content: center;
         }
         .modal-box {
-            width: min(80%, 260px);
+            width: min(80%, 360px);
             background: white;
-            padding:20px 18px;
-            border-radius:16px;
+            padding: 32px 24px;
+            border-radius: 16px;
         }
-        .modal-title{text-align:center;font-weight:bold;margin-bottom:12px}
-        .modal-desc{text-align:center;color:#555}
-        .modal-btn-row{display:flex;gap:12;margin-top:20px}
-        .modal-cancel-btn{flex:1;padding:10;border:none;border-radius:999px;background:#eee}
-        .modal-sure-btn{flex:1;padding:10;border:none;border-radius:999px;background:#2c7be5;color:#fff}
+        .modal-title{display:none;}
+        .modal-desc{text-align:center;color:#333;font-size:1rem;margin-bottom:28px}
+        .modal-btn-row{display:flex;gap:16px;margin-top:0}
+        .modal-cancel-btn{flex:1;padding:12px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#333;font-size:1rem}
+        .modal-sure-btn{flex:1;padding:12px;border:none;border-radius:999px;background:#2c7be5;color:#fff;font-size:1rem}
         .history-modal-mask {
             position: fixed;
             inset: 0;
@@ -212,19 +214,22 @@
     </style>
 </head>
 <body>
+    <!-- 转义过滤，解决中文/特殊字符乱码、注入风险 -->
+    <span id="hiddenUsername" style="display: none;">{{ username|e }}</span>
+
+    <!-- 删除确认弹窗 -->
     <div class="modal-mask" id="confirmModal">
         <div class="modal-box">
-            <h3 class="modal-title">提示</h3>
-            <p class="modal-desc" id="confirmText">确定删除选中的1条收藏？删除后无法恢复</p>
+            <p class="modal-desc" id="confirmText">确定删除选中的收藏？删除后无法恢复</p>
             <div class="modal-btn-row">
                 <button class="modal-cancel-btn" onclick="closeConfirmModal()">取消</button>
                 <button class="modal-sure-btn" onclick="executeDelete()">确定</button>
             </div>
         </div>
     </div>
+    <!-- 操作成功提示弹窗 -->
     <div class="modal-mask" id="tipModal">
         <div class="modal-box">
-            <h3 class="modal-title">提示</h3>
             <p class="modal-desc" id="tipText">删除收藏成功！</p>
             <div class="modal-btn-row" style="justify-content:center">
                 <button class="modal-sure-btn" onclick="closeTip()">知道了</button>
@@ -267,15 +272,16 @@ let deleteTargetIdList = [];
 let allCollectData = [];
 let allHistoryData = [];
 const loginUid = localStorage.getItem("loginUid");
+
 window.onload = async function () {
     const path = window.location.pathname;
     const whiteList = ['/login','/register','/tourist'];
     if(!whiteList.includes(path) && localStorage.getItem('isLogin') !== '1'){
         window.location.href = '/login';
     }
-    const nickMap = JSON.parse(localStorage.getItem('userNickMap') || '{}');
-    const acc = localStorage.getItem('loginAccount');
-    document.getElementById('pageTitle').textContent = (nickMap[acc] || "用户") + " 的个人中心";
+    const pageUserName = document.getElementById('hiddenUsername').textContent;
+    document.getElementById('pageTitle').textContent = pageUserName + " 的个人中心";
+    
     if(!loginUid){
         alert("登录失效");location.href="/login";return;
     }
@@ -312,7 +318,6 @@ async function loadCollectData(){
     allCollectData = json.data;
     renderCollectList();
 }
-// 已修改：新增释义展示
 function renderCollectList(){
     const wrap = document.getElementById("collectBox");
     const editBtn = document.getElementById("editCollectBtn");
@@ -344,20 +349,29 @@ function openConfirmDialog(){
         return;
     }
     deleteTargetIdList = Array.from(checked).map(i=>parseInt(i.dataset.id));
-    document.getElementById("confirmText").innerText=`确定删除${deleteTargetIdList.length}条收藏？`;
+    document.getElementById("confirmText").innerText=`确定删除${deleteTargetIdList.length}条收藏？删除后无法恢复`;
     document.getElementById("confirmModal").style.display="flex";
 }
-function closeConfirmModal(){document.getElementById("confirmModal").style.display="none";deleteTargetIdList=[]}
-function closeTip(){document.getElementById("tipModal").style.display="none"}
+function closeConfirmModal(){
+    document.getElementById("confirmModal").style.display="none";
+    deleteTargetIdList=[];
+}
+function closeTip(){
+    document.getElementById("tipModal").style.display="none";
+}
 async function executeDelete(){
     await fetch("/api/collect/batch_del",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({user_id:parseInt(loginUid),del_ids:deleteTargetIdList})
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            user_id:parseInt(loginUid),
+            del_ids:deleteTargetIdList
+        })
     })
     closeConfirmModal();
     toggleEditMode();
     await loadCollectData();
-    document.getElementById("tipText").innerText="删除成功";
+    document.getElementById("tipText").innerText="删除收藏成功！";
     document.getElementById("tipModal").style.display="flex";
 }
 async function loadHistoryData(){
@@ -384,40 +398,70 @@ function renderHistoryList(){
     })
     wrap.innerHTML = html;
 }
+// 修复核心：字段名与后端返回对齐，增加异常捕获
 async function openHistoryDetail(index){
     const record = allHistoryData[index];
-    const res = await fetch("/api/search/detail",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({user_id:parseInt(loginUid),record_id:record.id})
-    })
-    const ret = await res.json();
-    const wrap = document.getElementById("historyModalContent");
-    if(ret.code!==200){
-        wrap.innerHTML=`<p style="color:red">${ret.msg}</p>`;
+    console.log("点击记录：", record);
+    try{
+        const fetchOptions = {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({
+                user_id:parseInt(loginUid),
+                record_id:record.id
+            })
+        };
+        const res = await fetch("/api/search/detail", fetchOptions);
+        if (!res.ok) {
+            throw new Error(`接口请求失败，状态码：${res.status}`);
+        }
+        const ret = await res.json();
+        console.log("接口完整返回数据：", ret);
+        const wrap = document.getElementById("historyModalContent");
+        if(ret.code !== 200){
+            wrap.innerHTML=`<p style="color:red;font-size:1.1rem;">${ret.msg}</p>`;
+            document.getElementById("historyDetailModal").style.display="flex";
+            return;
+        }
+        const d = ret.data;
+        const fullAnalysisList = d.full_analysis || [];
+        const suggestionList = d.suggestions || [];
+
+        let html = `<h2 style="color:#0f4a8a;margin-top:0;">起名完整记录</h2>
+        <div class="meta">姓氏：${d.surname} ${d.gender==='male'?'男宝':'女宝'} 生肖：${d.zodiac} 时辰：${d.time_period}</div>
+        <div class="info-grid">
+            <span class="tag">年柱：${d.year}</span>
+            <span class="tag">月柱：${d.month}</span>
+            <span class="tag">日柱：${d.day}</span>
+            <span class="tag">时柱：${d.hour}</span>
+        </div>
+        <div class="meta"><strong>喜用神五行：</strong>${d.birth_element}</div>
+        <div class="meta"><strong>八字全局分析：</strong>${d.balance}</div>
+        <ul class="list" style="margin:12px 0 20px;">`;
+        fullAnalysisList.forEach(line=>html += `<li>${line}</li>`)
+        html += `</ul><h3 style="color:#0f4a8a;margin-bottom:12px;">推荐名字</h3>`;
+        
+        if(suggestionList.length === 0){
+            html += `<p style="color:#64748b;">该记录暂无保存的推荐名字</p>`;
+        }else{
+            suggestionList.forEach(nameItem=>{
+                const tags = nameItem.source_tags || [];
+                const nameMean = nameItem.meaning || "暂无释义";
+                html += `<div class="suggestion">
+                    <h3>${nameItem.name}</h3>
+                    <p>${nameMean}</p>
+                    <p class="meta">影响标签：${tags.join("，")}</p>
+                </div>`
+            })
+        }
+        wrap.innerHTML = html;
+        document.getElementById("historyDetailModal").style.display = "flex";
+    }catch(err){
+        console.error("加载详情全部异常：", err);
+        const wrap = document.getElementById("historyModalContent");
+        wrap.innerHTML = `<p style="color:red;">${err.message}</p>`;
         document.getElementById("historyDetailModal").style.display="flex";
-        return;
     }
-    const d = ret.data;
-    let html = `<h2 style="color:#0f4a8a">起名完整记录</h2>
-    <div class="meta">姓氏：${d.surname} ${d.gender==='male'?'男宝':'女宝'} 生肖${d.zodiac} 时辰${d.time_period}</div>
-    <div class="info-grid">
-        <span class="tag">年柱${d.pillar_year}</span>
-        <span class="tag">月柱${d.pillar_month}</span>
-        <span class="tag">日柱${d.pillar_day}</span>
-        <span class="tag">时柱${d.pillar_hour}</span>
-    </div>
-    <div class="meta">喜用神五行：${d.birth_element}</div>
-    <div class="meta"><strong>八字分析：</strong>${d.balance}</div>
-    <ul class="list">`;
-    d.full_analysis.forEach(t=>html+=`<li>${t}</li>`)
-    html += `</ul><h3>推荐名字</h3>`;
-    d.suggestions.forEach(n=>{
-        html += `<div class="suggestion"><h3>${n.name}</h3>
-        <p>${n.meaning}</p>
-        <p class="meta">标签：${n.source_tags.join("，")}</p></div>`
-    })
-    wrap.innerHTML=html;
-    document.getElementById("historyDetailModal").style.display="flex";
 }
 function closeHistoryModal(){
     document.getElementById("historyDetailModal").style.display="none";
