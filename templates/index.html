@@ -1,3 +1,4 @@
+{% set show_bazi = result.bazi if (result is defined and result.bazi is defined and 'year' in result.bazi) else (bazi if (bazi is defined and 'year' in bazi) else {}) %}
 <!doctype html>
 <html lang="zh-CN">
 <head>
@@ -155,7 +156,7 @@
     </div>
     <!-- 隐藏域：存放Jinja模板变量 -->
     <input type="hidden" id="tempRecordId" value="{{ result.record_id if result else 0 }}">
-    <input type="hidden" id="tempFiveAttr" value="{{ result.bazi.birth_element if result else '' }}">
+    <input type="hidden" id="tempFiveAttr" value="{{ show_bazi.birth_element if result else '' }}">
     <div class="container">
         <section class="hero">
             <div class="card">
@@ -202,22 +203,22 @@
             </div>
         </section>
         <div id="resultContainer">
-            {% if result %}
+            {% if result and show_bazi and show_bazi.year %}
             <section class="grid">
                 <div class="card">
                     <h2>八字详细分析</h2>
                     <div class="meta">姓氏：{{ result.input.surname }} · 性别：{{ '男' if result.input.gender == 'male' else '女' }} · 出生：{{ result.input.birth }}</div>
                     <div class="info-grid">
-                        <div class="tag">年柱：{{ result.bazi.year }}</div>
-                        <div class="tag">月柱：{{ result.bazi.month }}</div>
-                        <div class="tag">日柱：{{ result.bazi.day }}</div>
-                        <div class="tag">时柱：{{ result.bazi.hour }}</div>
+                        <div class="tag">年柱：{{ show_bazi.year }}</div>
+                        <div class="tag">月柱：{{ show_bazi.month }}</div>
+                        <div class="tag">日柱：{{ show_bazi.day }}</div>
+                        <div class="tag">时柱：{{ show_bazi.hour }}</div>
                     </div>
-                    <div class="meta">生肖：{{ result.bazi.zodiac }} · 五行：{{ result.birth_element }} · 时辰：{{ result.time_period }}</div>
-                    <div class="meta">分析：{{ result.balance }}</div>
+                    <div class="meta">生肖：{{ show_bazi.zodiac }} · 五行：{{ show_bazi.birth_element }} · 时辰：{{ result.time_period }}</div>
+                    <div class="meta">八字全局分析：{{ show_bazi.balance }}</div>
                     <div>
                         <ul class="list">
-                            {% for item in result.bazi.full_analysis %}
+                            {% for item in show_bazi.full_analysis %}
                                 <li>{{ item }}</li>
                             {% endfor %}
                         </ul>
@@ -291,7 +292,10 @@ function logout() {
     localStorage.removeItem('collectNameList');
     localStorage.removeItem('historyList');
     localStorage.removeItem(FORM_STORAGE_KEY);
-    document.cookie = "loginUid=;expires=0;path=/;isLogin=;expires=0;path=/";
+    // 清除cookie，单独一行，不要混跳转
+    document.cookie = "loginUid=;expires=0;path=/";
+    document.cookie = "isLogin=;expires=0;path=/";
+    // 单独跳转页面
     window.location.href = '/login';
 }
 function saveFormCache() {
@@ -335,7 +339,7 @@ async function cancelCollect(name) {
             })
         })
         const data = await res.json();
-        // 无论接口返回，强制刷新星星状态（数据库已执行DELETE）
+        // 无论接口返回，强制刷新星星状态
         await refreshStarState();
         showTipModal("取消收藏成功");
     } catch (err) {
@@ -345,6 +349,7 @@ async function cancelCollect(name) {
         if(idx > -1) savedNameList.splice(idx,1);
         refreshStarState();
     }
+
 }
 
 // 收藏/取消收藏切换总入口
@@ -436,7 +441,6 @@ async function refreshStarState() {
             } else {
                 star.innerText = "☆";
                 star.classList.remove('star-fill');
-                star.classList.add('star-empty');
             }
         })
     } catch (err) {

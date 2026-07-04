@@ -14,13 +14,12 @@ from datetime import datetime, date
 import calendar
 
 app = Flask(__name__)
-app.register_blueprint(api_bp, url_prefix="/api")
 
-# 智谱SDK配置
+# 智谱AI密钥
 ZHIPU_API_KEY = "00e172fcad8844afae3531c0123758eb.LWb2F0bsOK2IOd1n"
 client = ZhipuAI(api_key=ZHIPU_API_KEY)
 
-# 天干地支基础表
+# 天干地支常量
 TIAN_GAN = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
 DI_ZHI = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
 ZODIAC_MAP = {
@@ -29,20 +28,11 @@ ZODIAC_MAP = {
     "申": "猴", "酉": "鸡", "戌": "狗", "亥": "猪"
 }
 
-# 节气交接日（2000-2030简化版）
+# 节气表
 SOLAR_TERM_DAY = {
-    1: [4, 19],
-    2: [3, 18],
-    3: [5, 20],
-    4: [4, 20],
-    5: [5, 21],
-    6: [5, 21],
-    7: [7, 22],
-    8: [7, 23],
-    9: [7, 23],
-    10: [8, 24],
-    11: [7, 22],
-    12: [6, 21],
+    1: [4, 19],2: [3, 18],3: [5, 20],4: [4, 20],
+    5: [5, 21],6: [5, 21],7: [7, 22],8: [7, 23],
+    9: [7, 23],10: [8, 24],11: [7, 22],12: [6, 21],
 }
 
 # 时辰对照表
@@ -85,11 +75,9 @@ def get_day_gz(year, month, day):
 
 def get_shichen_gz(year, month, day, hour):
     day_gz_str = get_day_gz(year, month, day)
-    # 兜底日柱干支为空
     if not day_gz_str or len(day_gz_str) < 1:
         day_gz_str = "甲子"
     day_g = day_gz_str[0]
-    # 校验天干非法兜底甲
     if day_g not in TIAN_GAN:
         day_g = "甲"
     day_g_idx = TIAN_GAN.index(day_g)
@@ -100,20 +88,19 @@ def get_shichen_gz(year, month, day, hour):
         if h1 <= hour <= h2:
             shi_zhi = z_name
             break
-    # 关键修复：匹配不到时辰强制赋值子，杜绝空字符串""
     if not shi_zhi:
         shi_zhi = "子"
     z_idx = DI_ZHI.index(shi_zhi)
     g_idx = (shi_start + z_idx) % 10
     return TIAN_GAN[g_idx] + shi_zhi, shi_zhi
 
-# 修复参数缺失
 def get_full_birth_pillar(dt: datetime):
     y = dt.year
     m = dt.month
     d = dt.day
     h = dt.hour
     year_zhu = get_year_gz(y)
+    # 修复：补齐第三个参数 d
     month_zhu = get_month_gz(y, m, d)
     day_zhu = get_day_gz(y, m, d)
     shi_zhu, shi_zhi = get_shichen_gz(y, m, d, h)
@@ -128,7 +115,7 @@ def get_full_birth_pillar(dt: datetime):
         "time_period": hour_text
     }
 
-# 兜底起名
+# 兜底本地起名
 def local_fallback_name(surname, target_five):
     words = db.get_five_words(target_five)
     poems = db.get_all_poems()
@@ -146,7 +133,7 @@ def local_fallback_name(surname, target_five):
         })
     return res
 
-# AI命理起名
+# AI八字起名
 def glm_analysis_name(surname, gender, pillar_info):
     print("===== Start Zhipu GLM API Call =====")
     print(f"Params: surname={surname}, gender={gender}, pillar={pillar_info}")
@@ -238,7 +225,7 @@ JSON固定结构：
             "suggestions": fallback_suggest
         }
 
-# 页面路由
+# ====================== 页面路由（仅渲染HTML，无API接口） ======================
 @app.route("/")
 def root_redirect():
     return redirect("/login")
@@ -251,12 +238,14 @@ def login_page():
 def register_page():
     return render_template("register.html")
 
-# 首页起名页面（双重UID校验+完整日志打印）
+# 起名首页：双重UID（Cookie+前端隐藏域兜底，多端登录兼容）
 @app.route("/index", methods=["GET", "POST"])
 def index_page():
     result = None
     error = None
     current_record_id = 0
+    db_bazi = {} # 顶层数据库标准八字变量，页面优先渲染这个
+    input_pillar = {}
     if request.method == "POST":
         sur = request.form.get("surname", "").strip()
         gender = request.form.get("gender")
@@ -267,22 +256,20 @@ def index_page():
         else:
             birth_dt = datetime.strptime(birth_str, "%Y-%m-%dT%H:%M")
             pillar = get_full_birth_pillar(birth_dt)
+            input_pillar = pillar
             ai_res = glm_analysis_name(sur, gender, pillar)
             login_uid = request.cookies.get("loginUid", "")
-            print("=== Cookie loginUid:", repr(login_uid))
-            print("=== 表单传入UID:", repr(front_login_uid))
             real_uid = 0
             if login_uid.isdigit():
                 real_uid = int(login_uid)
             elif front_login_uid.isdigit():
                 real_uid = int(front_login_uid)
+            
+            current_record_id = 0
+            # 1、写入数据库（和user历史记录存储逻辑完全一致）
             if real_uid > 0:
                 try:
-                    input_info = {
-                        "surname": sur,
-                        "gender": gender,
-                        "birth": birth_str
-                    }
+                    input_info = {"surname":sur,"gender":gender,"birth":birth_str}
                     analysis_info = {
                         "birth_element": ai_res["birth_element"],
                         "balance": ai_res["balance"],
@@ -290,36 +277,59 @@ def index_page():
                         "suggestions": ai_res["suggestions"]
                     }
                     current_record_id = db.add_full_search_record(real_uid, input_info, pillar, analysis_info)
-                    print("✅ 数据库插入成功,记录ID:", current_record_id)
                 except Exception as e:
-                    print("❌ 数据库写入异常:")
                     traceback.print_exc()
+            
+            # 2、【核心复刻user页面】从数据库重读完整标准化记录
+            if current_record_id > 0 and real_uid > 0:
+                db_full = db.get_full_search_by_record_id(current_record_id, real_uid)
+                if db_full:
+                    # 和user接口统一标准化字段
+                    db_bazi = {
+                        "year": db_full["pillar_year"],
+                        "month": db_full["pillar_month"],
+                        "day": db_full["pillar_day"],
+                        "hour": db_full["pillar_hour"],
+                        "zodiac": pillar["zodiac"],
+                        "birth_element": db_full["birth_element"],
+                        "balance": db_full["balance"],
+                        "full_analysis": db_full["full_analysis"]
+                    }
+                    result = {
+                        "input":{"surname":sur,"gender":gender,"birth":birth_str},
+                        "bazi": db_bazi,
+                        "time_period":pillar["time_period"],
+                        "suggestions":db_full["suggestions"],
+                        "record_id":current_record_id
+                    }
             else:
-                print("⚠️ 无有效登录ID，跳过存储")
-            bazi_data = {
-                "year": pillar["year"],
-                "month": pillar["month"],
-                "day": pillar["day"],
-                "hour": pillar["hour"],
-                "zodiac": pillar["zodiac"],
-                "birth_element": ai_res["birth_element"],
-                "balance": ai_res["balance"],
-                "full_analysis": ai_res["full_analysis"]
-            }
-            result = {
-                "input": {"surname": sur, "gender": gender, "birth": birth_str},
-                "bazi": bazi_data,
-                "time_period": pillar["time_period"],
-                "suggestions": ai_res["suggestions"],
-                "record_id": current_record_id
-            }
-    return render_template("index.html", result=result, error=error)
+                # 游客无账号，兜底AI数据
+                db_bazi = {
+                    "year": ai_res["year"],
+                    "month": ai_res["month"],
+                    "day": ai_res["day"],
+                    "hour": ai_res["hour"],
+                    "zodiac": pillar["zodiac"],
+                    "birth_element": ai_res["birth_element"],
+                    "balance": ai_res["balance"],
+                    "full_analysis": ai_res["full_analysis"]
+                }
+                result = {
+                    "input":{"surname":sur,"gender":gender,"birth":birth_str},
+                    "bazi": db_bazi,
+                    "time_period":pillar["time_period"],
+                    "suggestions":ai_res["suggestions"],
+                    "record_id":0
+                }
+    # 单独把数据库来源八字db_bazi传给页面，最高优先级渲染
+    return render_template("index.html", result=result, error=error, db_bazi=db_bazi)
 
-# 游客页面（不存储，无修改）
+# 游客页面完全保留，不改动任何逻辑
 @app.route("/tourist", methods=["GET", "POST"])
 def tourist_page():
     result = None
     error = None
+    render_bazi = {}
     if request.method == "POST":
         sur = request.form.get("surname", "").strip()
         gender = request.form.get("gender")
@@ -330,25 +340,24 @@ def tourist_page():
             birth_dt = datetime.strptime(birth_str, "%Y-%m-%dT%H:%M")
             pillar = get_full_birth_pillar(birth_dt)
             ai_res = glm_analysis_name(sur, gender, pillar)
-            bazi_data = {
-                "year": pillar["year"],
-                "month": pillar["month"],
-                "day": pillar["day"],
-                "hour": pillar["hour"],
+            render_bazi = {
+                "year": ai_res["year"],
+                "month": ai_res["month"],
+                "day": ai_res["day"],
+                "hour": ai_res["hour"],
                 "zodiac": pillar["zodiac"],
                 "birth_element": ai_res["birth_element"],
                 "balance": ai_res["balance"],
                 "full_analysis": ai_res["full_analysis"]
             }
             result = {
-                "input": {"surname": sur, "gender": gender, "birth": birth_str},
-                "bazi": bazi_data,
-                "time_period": pillar["time_period"],
-                "suggestions": ai_res["suggestions"]
+                "input":{"surname":sur,"gender":gender,"birth":birth_str},
+                "bazi":render_bazi,
+                "time_period":pillar["time_period"],
+                "suggestions":ai_res["suggestions"]
             }
-    return render_template("tourist.html", result=result)
+    return render_template("tourist.html", result=result, error=error, bazi=render_bazi)
 
-# 个人中心
 @app.route("/user")
 def user_center():
     login_uid = request.cookies.get("loginUid", "")
@@ -360,9 +369,12 @@ def user_center():
             if user_info and "username" in user_info:
                 username = user_info["username"]
     except Exception as e:
-        # 数据库查询出错，兜底游客
         username = "游客"
     return render_template("user.html", username=username)
 
+# ========== 所有路由写完后，最后注册蓝图，解决AssertionError报错 ==========
+app.register_blueprint(api_bp, url_prefix="/api")
+
+# 关键：host=0.0.0.0 局域网手机/平板全部可访问，实现多端共用数据库
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=5000)

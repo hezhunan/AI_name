@@ -2,13 +2,13 @@ import sys
 import os
 sys.stdout.reconfigure(encoding="utf-8")
 os.environ["PYTHONIOENCODING"] = "utf-8"
+import sqlite3
 from flask import Blueprint, request, jsonify
-import re
 import db
 
 api_bp = Blueprint("api", __name__)
 
-# 登录
+# 登录接口
 @api_bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
@@ -26,7 +26,25 @@ def login():
         "username":user["username"],
         "account":user["account"]
     })
-    
+
+# 注册账号接口
+@api_bp.route("/register", methods=["POST"])
+def register():
+    data = request.get_json()
+    account = data.get("account", "").strip()
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
+    # 基础校验
+    if len(account) != 11 or not account.isdigit():
+        return jsonify({"code":400, "msg":"账号必须为11位手机号"})
+    if not username or not password:
+        return jsonify({"code":400, "msg":"用户名和密码不能为空"})
+    # 调用db新增用户
+    success = db.add_user(account, username, password)
+    if success:
+        return jsonify({"code":200, "msg":"注册成功，请前往登录"})
+    else:
+        return jsonify({"code":400, "msg":"该手机号已注册"})
 
 # 添加收藏
 @api_bp.route("/collect/add", methods=["POST"])
@@ -35,13 +53,13 @@ def collect_add():
     ok = db.add_collect(d["user_id"], d["full_name"], d["meaning"], d["five_attr"], d["record_id"])
     return jsonify({"code":200 if ok else 400, "msg":"收藏成功" if ok else "已收藏"})
 
-# 收藏列表
+# 获取收藏列表
 @api_bp.route("/collect/list", methods=["POST"])
 def collect_list():
     uid = request.get_json()["user_id"]
     return jsonify({"code":200, "data":db.get_user_collect_list(uid)})
 
-# 新增取消收藏接口
+# 单条取消收藏
 @api_bp.route("/collect/remove", methods=["POST"])
 def collect_remove():
     data = request.get_json()
@@ -49,7 +67,6 @@ def collect_remove():
     full_name = data.get("full_name", "")
     if not user_id or not full_name:
         return jsonify({"code":400, "msg":"参数缺失"})
-    # 只传user_id和名字
     db.remove_collect_item(user_id, full_name)
     return jsonify({"code":200, "msg":"取消收藏成功"})
 
@@ -61,17 +78,16 @@ def collect_batch_del():
     del_ids = data.get("del_ids", [])
     if not isinstance(del_ids, list) or len(del_ids) == 0:
         return jsonify({"code": 400, "msg": "无删除ID"})
-    # 调用db函数执行数据库DELETE
     db.batch_del_collect(user_id, del_ids)
     return jsonify({"code": 200, "msg": "删除成功"})
 
-# 简易浏览记录列表
+# 获取起名历史列表
 @api_bp.route("/search/list", methods=["POST"])
 def search_list():
     uid = request.get_json()["user_id"]
     return jsonify({"code":200, "data":db.get_user_search_list(uid)})
 
-# 完整记录详情接口
+# 单条起名完整详情
 @api_bp.route("/search/detail", methods=["POST"])
 def search_detail():
     try:
@@ -83,12 +99,10 @@ def search_detail():
         data = db.get_full_search_by_record_id(record_id, user_id)
         if not data:
             return jsonify({"code":400, "msg":"该记录不存在"})
-        # 四柱字段兼容前端
         data["year"] = data["pillar_year"]
         data["month"] = data["pillar_month"]
         data["day"] = data["pillar_day"]
         data["hour"] = data["pillar_hour"]
-        print("接口返回完整data：", data) # 打印调试，看是否包含suggestions
         return jsonify({"code":200, "data":data})
     except Exception as e:
         import traceback
