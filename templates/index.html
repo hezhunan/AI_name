@@ -66,9 +66,10 @@
             max-width: unset;
             padding: 0;
             margin: 0;
+            border: none; /* 无额外边框 */
         }
-        .star-empty { color: #cccccc; }
-        .star-fill { color: #ffcc00; }
+        .star-empty { color: #cccccc; } /* 未收藏灰色空心 */
+        .star-fill { color: #ffcc00; } /* 已收藏黄色实心 */
         .restart-btn-wrap { text-align: center; margin-top: 30px; }
         /* 加载弹窗：无外层灰色遮罩，仅弹窗自身半透明白色背景 */
         .loading-mask {
@@ -94,7 +95,7 @@
             font-weight: 600;
             white-space: nowrap;
         }
-        /* 统一提示弹窗（缩小尺寸、仅保留确定按钮） */
+        /* 轻提示弹窗（无按钮、自适应文字、自动关闭） */
         .tip-modal-mask {
             position: fixed;
             top: 0;
@@ -108,22 +109,56 @@
             justify-content: center;
         }
         .tip-modal-box {
-            width: min(80%, 300px);
+            width: auto;
+            padding: 16px 32px;
             background: #fff;
-            padding: 24px 20px;
             border-radius: 16px;
         }
         .tip-modal-desc {
             text-align: center;
             color: #333;
             font-size: 1rem;
+            margin: 0;
+        }
+        /* 取消收藏确认弹窗（双按钮：取消+确定） */
+        .confirm-cancel-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.55);
+            z-index: 10001;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .confirm-cancel-box {
+            width: min(80%, 300px);
+            background: #fff;
+            padding: 24px 20px;
+            border-radius: 16px;
+        }
+        .confirm-cancel-desc {
+            text-align: center;
+            color: #333;
+            font-size: 1rem;
             margin-bottom: 20px;
         }
-        .tip-modal-btn-row {
+        .confirm-cancel-btn-row {
             display: flex;
-            gap: 0;
+            gap: 12px;
         }
-        .tip-modal-sure {
+        .confirm-cancel-cancel {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 999px;
+            background: #f8fafc;
+            color: #333;
+            font-size: 1rem;
+        }
+        .confirm-cancel-sure {
             flex: 1;
             padding: 12px;
             border: none;
@@ -139,22 +174,29 @@
     </style>
 </head>
 <body>
-    <!-- 统一提示弹窗（已移除取消按钮，缩小弹窗） -->
+    <!-- 轻提示弹窗：移除按钮，仅文字，自适应宽度 -->
     <div class="tip-modal-mask" id="tipModalMask">
         <div class="tip-modal-box">
             <p class="tip-modal-desc" id="tipModalText"></p>
-            <div class="tip-modal-btn-row">
-                <button class="tip-modal-sure" onclick="closeTipModal()">确定</button>
+        </div>
+    </div>
+    <!-- 取消收藏双按钮确认弹窗（保留取消按钮） -->
+    <div class="confirm-cancel-mask" id="confirmCancelMask">
+        <div class="confirm-cancel-box">
+            <p class="confirm-cancel-desc">确定取消收藏该名字？</p>
+            <div class="confirm-cancel-btn-row">
+                <button class="confirm-cancel-cancel" onclick="closeCancelConfirm()">取消</button>
+                <button class="confirm-cancel-sure" onclick="submitCancelCollect()">确定</button>
             </div>
         </div>
     </div>
-    <!-- 加载弹窗，无外层灰色遮罩 -->
+    <!-- 加载弹窗 -->
     <div class="loading-mask" id="loadingMask">
         <div class="loading-box">
             <div class="loading-text">正在生成中...</div>
         </div>
     </div>
-    <!-- 隐藏域：存放Jinja模板变量 -->
+    <!-- 隐藏域 -->
     <input type="hidden" id="tempRecordId" value="{{ result.record_id if result else 0 }}">
     <input type="hidden" id="tempFiveAttr" value="{{ show_bazi.birth_element if result else '' }}">
     <div class="container">
@@ -187,7 +229,6 @@
                     <div class="error">{{ error }}</div>
                 {% endif %}
                 <form id="nameForm" method="POST">
-                    <!-- 兜底传登录UID给后端 -->
                     <input type="hidden" name="front_login_uid" id="hiddenLoginUid">
                     <label for="surname">姓氏（支持复姓，例如：欧阳、司马）</label>
                     <input id="surname" name="surname" type="text" maxlength="2" placeholder="李 或 欧阳" value="{{ request.form.surname or '' }}" required>
@@ -235,7 +276,6 @@
                     <div class="suggestion" data-name="{{ item.name }}">
                         <h3>
                             {{ item.name }}
-                            <!-- 移除行内onclick，改用全局事件委托解决点击失效 -->
                             <span class="star-btn star-empty" data-target="{{ item.name }}">☆</span>
                         </h3>
                         <p>{{ item.meaning }}</p>
@@ -257,21 +297,59 @@ const FORM_STORAGE_KEY = 'name_form_cache';
 const loadingMask = document.getElementById('loadingMask');
 const tipModalMask = document.getElementById('tipModalMask');
 const tipModalText = document.getElementById('tipModalText');
-let needRestoreCache = false;
+const confirmCancelMask = document.getElementById('confirmCancelMask');
+let waitCancelName = "";
 let globalRecordId = 0;
 let globalFiveAttr = "";
-let savedNameList = []; // 缓存已收藏名字列表
+let savedNameList = [];
 
-// 弹窗控制函数（简化，仅单确定按钮）
+// 关闭弹窗
 function closeTipModal() {
     tipModalMask.style.display = 'none';
 }
+// 弹出提示，1秒自动关闭
 function showTipModal(msg) {
     tipModalText.innerText = msg;
     tipModalMask.style.display = 'flex';
+    // 1000ms后自动关闭
+    setTimeout(() => {
+        closeTipModal();
+    }, 1000);
 }
 
-// 页面加载初始化变量、填充隐藏UID
+// 取消收藏弹窗控制
+function openCancelConfirm(name) {
+    waitCancelName = name;
+    confirmCancelMask.style.display = 'flex';
+}
+function closeCancelConfirm() {
+    waitCancelName = "";
+    confirmCancelMask.style.display = 'none';
+}
+async function submitCancelCollect() {
+    const name = waitCancelName;
+    closeCancelConfirm();
+    if (!name) return;
+    const loginUid = localStorage.getItem("loginUid");
+    try {
+        const res = await fetch("/api/collect/remove", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({
+                user_id: parseInt(loginUid),
+                full_name: name
+            })
+        })
+        await res.json();
+        await refreshStarState();
+    } catch (err) {
+        console.error("取消收藏异常：", err);
+        const idx = savedNameList.indexOf(name);
+        if(idx > -1) savedNameList.splice(idx,1);
+        refreshStarState();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function(){
     const ridInput = document.getElementById('tempRecordId');
     const fiveInput = document.getElementById('tempFiveAttr');
@@ -292,10 +370,8 @@ function logout() {
     localStorage.removeItem('collectNameList');
     localStorage.removeItem('historyList');
     localStorage.removeItem(FORM_STORAGE_KEY);
-    // 清除cookie，单独一行，不要混跳转
     document.cookie = "loginUid=;expires=0;path=/";
     document.cookie = "isLogin=;expires=0;path=/";
-    // 单独跳转页面
     window.location.href = '/login';
 }
 function saveFormCache() {
@@ -305,7 +381,6 @@ function saveFormCache() {
     localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify({surname, gender, birth}));
 }
 function restoreFormCache() {
-    if (!needRestoreCache) return;
     const cacheStr = localStorage.getItem(FORM_STORAGE_KEY);
     if (!cacheStr) return;
     try {
@@ -316,43 +391,14 @@ function restoreFormCache() {
     } catch(e) {
         localStorage.removeItem(FORM_STORAGE_KEY);
     }
-    needRestoreCache = false;
 }
 function autoRegen() {
-    needRestoreCache = true;
     const resultWrap = document.getElementById('resultContainer');
     resultWrap.innerHTML = '';
     document.getElementById('inputWrap').style.display = 'block';
     restoreFormCache();
 }
 
-// 取消收藏接口（仅传user_id和名字，删除数据库对应数据）
-async function cancelCollect(name) {
-    const loginUid = localStorage.getItem("loginUid");
-    try {
-        const res = await fetch("/api/collect/remove", {
-            method: "POST",
-            headers: {"Content-Type":"application/json"},
-            body: JSON.stringify({
-                user_id: parseInt(loginUid),
-                full_name: name
-            })
-        })
-        const data = await res.json();
-        // 无论接口返回，强制刷新星星状态
-        await refreshStarState();
-        showTipModal("取消收藏成功");
-    } catch (err) {
-        console.error("取消收藏异常：", err);
-        // 移除失败弹窗，直接刷新页面星星，强制变回未收藏
-        const idx = savedNameList.indexOf(name);
-        if(idx > -1) savedNameList.splice(idx,1);
-        refreshStarState();
-    }
-
-}
-
-// 收藏/取消收藏切换总入口
 async function toggleStar(name) {
     console.log("触发星星点击，名字：", name);
     const loginUid = localStorage.getItem("loginUid");
@@ -360,7 +406,6 @@ async function toggleStar(name) {
         showTipModal("请先登录");
         return;
     }
-    // 判断当前名字是否已收藏
     const isCollected = savedNameList.includes(name);
     const wrapDom = document.querySelector(`.suggestion[data-name="${name}"]`);
     if (!wrapDom) {
@@ -378,17 +423,8 @@ async function toggleStar(name) {
     }
 
     if (isCollected) {
-        // 已收藏：弹出确认弹窗，点确定直接删除
-        showTipModal("确定取消收藏该名字？");
-        // 重写关闭事件，弹窗关闭后执行删除
-        const originalClose = closeTipModal;
-        closeTipModal = async function() {
-            originalClose();
-            await cancelCollect(name);
-            closeTipModal = originalClose;
-        }
+        openCancelConfirm(name);
     } else {
-        // 未收藏：新增收藏
         try {
             const res = await fetch("/api/collect/add", {
                 method: "POST",
@@ -411,7 +447,6 @@ async function toggleStar(name) {
     }
 }
 
-// 全局事件委托：监听所有星星点击
 document.addEventListener("click", function(e) {
     const targetStar = e.target.closest(".star-btn");
     if (targetStar) {
@@ -420,7 +455,6 @@ document.addEventListener("click", function(e) {
     }
 });
 
-// 刷新星星填充状态 + 更新缓存已收藏名单
 async function refreshStarState() {
     const loginUid = localStorage.getItem("loginUid");
     if (!loginUid) return;
@@ -441,6 +475,7 @@ async function refreshStarState() {
             } else {
                 star.innerText = "☆";
                 star.classList.remove('star-fill');
+                star.classList.add('star-empty');
             }
         })
     } catch (err) {
@@ -461,7 +496,6 @@ window.onload = async function () {
         inputWrap.style.display = 'none';
     }
 }
-// 表单提交弹窗加载
 document.getElementById('nameForm').addEventListener('submit', function(){
     saveFormCache();
     loadingMask.style.display = 'flex';
