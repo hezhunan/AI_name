@@ -108,3 +108,26 @@ def search_detail():
         import traceback
         traceback.print_exc()
         return jsonify({"code":500, "msg":"服务器查询异常"})
+    
+# 新增：忘记密码重置接口
+@api_bp.route("/reset_pwd", methods=["POST"])
+def reset_pwd():
+    data = request.get_json() if request.is_json else request.form
+    account = data.get("account", "").strip()
+    new_pwd = data.get("new_pwd", "").strip()
+    confirm_pwd = data.get("confirm_pwd", "").strip()
+
+    # 参数校验
+    if len(account) != 11 or not account.isdigit():
+        return jsonify({"code":400, "msg":"账号必须为11位手机号"})
+    if not new_pwd or not confirm_pwd:
+        return jsonify({"code":400, "msg":"密码不能为空"})
+    if new_pwd != confirm_pwd:
+        return jsonify({"code":400, "msg":"两次输入密码不一致"})
+    
+    # 调用db更新密码
+    ok, msg = db.reset_user_password(account, new_pwd)
+    if ok:
+        return jsonify({"code":200, "msg":msg})
+    else:
+        return jsonify({"code":400, "msg":msg})

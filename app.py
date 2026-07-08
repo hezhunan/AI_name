@@ -372,6 +372,28 @@ def user_center():
         username = "游客"
     return render_template("user.html", username=username)
 
+# 新增：忘记密码重置页面路由
+@app.route("/reset_pwd", methods=["GET", "POST"])
+def reset_pwd_page():
+    msg = ""
+    msg_type = ""
+    if request.method == "POST":
+        # 表单提交，转发API逻辑，简易页面提示
+        import requests
+        try:
+            res = requests.post("http://127.0.0.1:5000/api/reset_pwd", data=request.form)
+            res_data = res.json()
+            if res_data["code"] == 200:
+                msg = res_data["msg"]
+                msg_type = "success"
+            else:
+                msg = res_data["msg"]
+                msg_type = "error"
+        except Exception as e:
+            msg = "服务器异常，重置失败"
+            msg_type = "error"
+    return render_template("reset_pwd.html", msg=msg, msg_type=msg_type)
+
 # ========== 所有路由写完后，最后注册蓝图，解决AssertionError报错 ==========
 app.register_blueprint(api_bp, url_prefix="/api")
 

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>重置密码</title>
+    <!-- 完全复用登录页CSS，样式统一 -->
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Microsoft Yahei";
+        }
+        body {
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .reset-box {
+            width: 360px;
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px #eee;
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 24px;
+            color: #333;
+        }
+        .form-item {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            height: 42px;
+            padding: 0 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .submit-btn {
+            width: 100%;
+            height: 44px;
+            background: linear-gradient(135deg, #0f4a8a 0%, #2c7be5 100%);
+            color: #fff;
+            border: none;
+            border-radius: 999px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .back-login {
+            text-align: center;
+            margin-top: 16px;
+            font-size:14px;
+        }
+        a {
+            color: #409EFF;
+            text-decoration: none;
+        }
+        .tip {
+            text-align: center;
+            margin: 10px 0;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        /* 新增全局提示弹窗样式 */
+        .global-tip-mask {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.3);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .global-tip-box {
+            background: #fff;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+<div class="reset-box">
+    <h2>重置登录密码</h2>
+    <p class="tip error" id="errTip"></p>
+    <form id="resetForm">
+        <div class="form-item">
+            <label>注册手机号（账号）</label>
+            <input type="text" name="account" id="inpAccount" placeholder="输入11位注册手机号" required maxlength="11">
+        </div>
+        <div class="form-item">
+            <label>新密码</label>
+            <input type="password" name="new_pwd" id="inpNewPwd" placeholder="设置新登录密码" required>
+        </div>
+        <div class="form-item">
+            <label>确认新密码</label>
+            <input type="password" name="confirm_pwd" id="inpConfirmPwd" placeholder="再次输入新密码" required>
+        </div>
+        <button class="submit-btn" type="submit">确认重置密码</button>
+    </form>
+    <div class="back-login">
+        <a href="/login">返回登录</a>
+    </div>
+</div>
+
+<!-- 全局弹窗提示 -->
+<div class="global-tip-mask" id="tipMask">
+    <div class="global-tip-box" id="tipText"></div>
+</div>
+
+<script>
+const form = document.getElementById('resetForm');
+const errTip = document.getElementById('errTip');
+const tipMask = document.getElementById('tipMask');
+const tipText = document.getElementById('tipText');
+
+// 显示弹窗
+function showTip(msg) {
+    tipText.innerText = msg;
+    tipMask.style.display = 'flex';
+}
+// 关闭弹窗
+function hideTip() {
+    tipMask.style.display = 'none';
+}
+
+form.addEventListener('submit', async function(e) {
+    // 阻止表单原生跳转
+    e.preventDefault();
+    errTip.innerText = '';
+    // 获取输入值
+    const account = document.getElementById('inpAccount').value.trim();
+    const new_pwd = document.getElementById('inpNewPwd').value.trim();
+    const confirm_pwd = document.getElementById('inpConfirmPwd').value.trim();
+
+    try {
+        const res = await fetch('/api/reset_pwd', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+                account,
+                new_pwd,
+                confirm_pwd
+            })
+        })
+        const data = await res.json();
+        if(data.code === 200) {
+            // 修改成功弹窗
+            showTip("修改成功");
+            // 0.5秒后关闭弹窗并跳转登录页
+            setTimeout(() => {
+                hideTip();
+                window.location.href = "/login";
+            }, 1000);
+        } else {
+            // 失败页面文字提示
+            errTip.innerText = data.msg;
+        }
+    } catch(err) {
+        errTip.innerText = "网络请求异常，请重试";
+        console.error(err);
+    }
+})
+</script>
+</body>
+</html>

@@ -45,6 +45,21 @@ def add_user(account, username, password):
     finally:
         conn.close()
 
+        # ========== 新增：重置用户密码 ==========
+def reset_user_password(account, new_pwd):
+    """根据手机号账号修改密码，返回是否修改成功"""
+    conn = get_conn()
+    # 先判断账号是否存在
+    user = conn.execute("SELECT id FROM user WHERE account = ?", (account,)).fetchone()
+    if not user:
+        conn.close()
+        return False, "该手机号账号不存在"
+    # 更新密码
+    conn.execute("UPDATE user SET password = ? WHERE account = ?", (new_pwd, account))
+    conn.commit()
+    conn.close()
+    return True, "密码重置成功"
+
 # ==================== 起名记录存储（事务保证多端写入不残缺） ====================
 def add_full_search_record(user_id, input_data, pillar, analysis):
     conn = get_conn()
