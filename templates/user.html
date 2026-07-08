@@ -124,7 +124,7 @@
             text-align: center;
             color: #64748b;
             font-size: 0.95rem;
-            margin-top: 80px;
+            margin-top: 52px;
         }
         /* 弹窗样式与登录弹窗完全匹配 */
         .modal-mask {
@@ -216,8 +216,7 @@
 <body>
     <!-- 转义过滤，解决中文/特殊字符乱码、注入风险 -->
     <span id="hiddenUsername" style="display: none;">{{ username|e }}</span>
-
-    <!-- 删除确认弹窗 -->
+    <!-- 收藏批量删除确认弹窗 -->
     <div class="modal-mask" id="confirmModal">
         <div class="modal-box">
             <p class="modal-desc" id="confirmText">确定删除选中的收藏？删除后无法恢复</p>
@@ -227,13 +226,21 @@
             </div>
         </div>
     </div>
+    <!-- 删除确认弹窗 -->
+    <div class="modal-mask" id="destroyConfirmModal">
+        <div class="modal-box">
+            <p class="modal-desc">确定注销账号？所有用户、收藏、浏览记录将永久删除，无法恢复！</p>
+            <div class="modal-btn-row">
+                <button class="modal-cancel-btn" onclick="closeDestroyConfirm()">取消</button>
+                <button class="modal-sure-btn" onclick="executeDestroy()">确定</button>
+            </div>
+        </div>
+    </div>
     <!-- 操作成功提示弹窗 -->
     <div class="modal-mask" id="tipModal">
-        <div class="modal-box">
-            <p class="modal-desc" id="tipText">删除收藏成功！</p>
-            <div class="modal-btn-row" style="justify-content:center">
-                <button class="modal-sure-btn" onclick="closeTip()">知道了</button>
-            </div>
+        <div class="modal-box" style="padding:28px 32px;">
+            <!-- 新增font-size放大文字，加粗 -->
+            <p class="modal-desc" id="tipText" style="font-size:1.25rem;font-weight:500;">修改成功！</p>
         </div>
     </div>
     <div class="history-modal-mask" id="historyDetailModal">
@@ -245,9 +252,16 @@
     <div class="container">
         <div class="header-card">
             <h1 id="pageTitle">个人中心</h1>
-            <div class="content-box">
-                <span class="back-text" onclick="goHomePage()">返回首页</span>
-                <span class="back-text" onclick="logout()">退出登录</span>
+            <div class="content-box" style="align-items:center;">
+                <span class="back-text" onclick="window.location.href='/'">返回首页</span>
+                <div style="position:relative;display:inline-flex;align-items:center;">
+                    <span class="back-text" id="settingBtn">设置</span>
+                    <div id="settingDropdown" style="display:none;position:absolute;top:120%;right:0;background:#fff;border:1px solid #eee;box-shadow:0 2px 8px #00000015;border-radius:6px;min-width:120px;z-index:999;">
+                        <div style="padding:10px 16px;cursor:pointer;" onclick="openEditModal()">编辑信息</div>
+                        <div style="padding:10px 16px;cursor:pointer;" onclick="confirmDestroy()">注销账号</div>
+                        <div style="padding:10px 16px;cursor:pointer;" onclick="logout()">退出登录</div>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="grid">
@@ -265,6 +279,25 @@
             </div>
         </div>
         <div class="footer">Powered by AI 起名引擎 · 传统文化起名系统</div>
+    </div>
+    <!-- 新增：修改用户信息弹窗，独立内联样式，不修改页面原有样式 -->
+    <div id="editModalMask" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;">
+        <div style="width:min(92%,400px);background:#fff;padding:32px;border-radius:12px;">
+            <h2 style="text-align:center;margin-top:0;color:#222;">修改用户信息</h2>
+            <!-- 统一错误提示文字，空值/密码不一致都在这里显示 -->
+            <div id="pwdTipText" style="text-align:center;color:#c41e3a;font-weight:bold;margin:8px 0 12px;display:none;"></div>
+            <label style="display:block;margin:20px 0 6px;font-weight:bold;color:#333;">新用户名</label>
+            <!-- placeholder改为输入昵称，移除value填充 -->
+            <input id="editUsername" type="text" style="width:100%;padding:12px 14px;border:1px solid #ddd;border-radius:8px;font-size:1rem;" placeholder="输入昵称">
+            <label style="display:block;margin:20px 0 6px;font-weight:bold;color:#333;">新密码</label>
+            <input id="editPwd" type="password" style="width:100%;padding:12px 14px;border:1px solid #ddd;border-radius:8px;font-size:1rem;" placeholder="输入新密码">
+            <label style="display:block;margin:20px 0 6px;font-weight:bold;color:#333;">确认新密码</label>
+            <input id="editPwdConfirm" type="password" style="width:100%;padding:12px 14px;border:1px solid #ddd;border-radius:8px;font-size:1rem;" placeholder="再次输入新密码">
+            <div style="display:flex;gap:14px;margin-top:28px;">
+                <button onclick="closeEditModal()" style="flex:1;padding:13px;border:none;border-radius:99px;background:#e8edf3;color:#222;font-size:1rem;cursor:pointer;">放弃修改</button>
+                <button onclick="submitEdit()" style="flex:1;padding:13px;border:none;border-radius:99px;background:#1958d8;color:#fff;font-size:1rem;cursor:pointer;">确认修改信息</button>
+            </div>
+        </div>
     </div>
 <script>
 let editMode = false;
@@ -346,6 +379,10 @@ function openConfirmDialog(){
     if(checked.length===0){
         document.getElementById("tipText").innerText="请勾选要删除的收藏";
         document.getElementById("tipModal").style.display="flex";
+        // 新增2秒自动关闭
+        setTimeout(()=>{
+            closeTip();
+        }, 1500);
         return;
     }
     deleteTargetIdList = Array.from(checked).map(i=>parseInt(i.dataset.id));
@@ -373,6 +410,10 @@ async function executeDelete(){
     await loadCollectData();
     document.getElementById("tipText").innerText="删除收藏成功！";
     document.getElementById("tipModal").style.display="flex";
+    // 2秒自动关闭提示弹窗
+    setTimeout(()=>{
+        closeTip();
+    }, 1500);
 }
 async function loadHistoryData(){
     const res = await fetch("/api/search/list",{
@@ -465,6 +506,115 @@ async function openHistoryDetail(index){
 }
 function closeHistoryModal(){
     document.getElementById("historyDetailModal").style.display="none";
+}
+// 1. 设置下拉菜单控制
+const settingBtn = document.getElementById("settingBtn");
+const dropdown = document.getElementById("settingDropdown");
+settingBtn.addEventListener("click", () => {
+    dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+});
+// 点击空白关闭下拉
+document.addEventListener("click", (e) => {
+    if (!settingBtn.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.style.display = "none";
+    }
+});
+
+// 2. 编辑信息弹窗开关
+function openEditModal(){
+    // 打开弹窗清空错误提示
+    document.getElementById("pwdTipText").style.display = "none";
+    dropdown.style.display = "none";
+    document.getElementById("editModalMask").style.display = "flex";
+    // 清空输入框，不再自动填充原用户名
+    document.getElementById("editUsername").value = "";
+    document.getElementById("editPwd").value = "";
+    document.getElementById("editPwdConfirm").value = "";
+}
+function closeEditModal() {
+    document.getElementById("editModalMask").style.display = "none";
+}
+
+// 3. 提交修改用户名&密码（调用后端更新数据库）
+async function submitEdit() {
+    // 每次提交先隐藏提示文字
+    document.getElementById("pwdTipText").style.display = "none";
+    const uid = parseInt(localStorage.getItem("loginUid"));
+    const newUser = document.getElementById("editUsername").value.trim();
+    const newPwd = document.getElementById("editPwd").value.trim();
+    const newPwdConfirm = document.getElementById("editPwdConfirm").value.trim();
+
+    // 空值校验：顶部弹窗红字提示
+    if (!newUser || !newPwd || !newPwdConfirm) {
+        const tipDom = document.getElementById("pwdTipText");
+        tipDom.innerText = "昵称、新密码、确认密码不能有为空";
+        tipDom.style.display = "block";
+        return;
+    }
+    // 两次密码不一致提示
+    if(newPwd !== newPwdConfirm){
+        const tipDom = document.getElementById("pwdTipText");
+        tipDom.innerText = "两次输入的密码不一致";
+        tipDom.style.display = "block";
+        return;
+    }
+    const res = await fetch("/api/user/update_info", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({user_id: uid, username: newUser, password: newPwd})
+    });
+    const data = await res.json();
+    // 修改成功使用全局居中提示弹窗
+    document.getElementById("tipText").innerText = data.msg;
+    document.getElementById("tipModal").style.display = "flex";
+    if (data.code === 200) {
+        closeEditModal();
+        setTimeout(()=>location.reload(),1200);
+    }
+}
+
+// 4. 注销账号（删除用户所有关联数据）
+function confirmDestroy() {
+    dropdown.style.display = "none";
+    // 打开页面居中注销确认弹窗，不再使用浏览器顶部confirm
+    document.getElementById("destroyConfirmModal").style.display = "flex";
+}
+// 关闭注销确认弹窗
+function closeDestroyConfirm(){
+    document.getElementById("destroyConfirmModal").style.display = "none";
+}
+// 点击确定注销，执行删除逻辑
+function executeDestroy(){
+    closeDestroyConfirm();
+    destroyAccount();
+}
+async function destroyAccount() {
+    const uid = parseInt(localStorage.getItem("loginUid"));
+    const res = await fetch("/api/user/destroy_all", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({user_id: uid})
+    });
+    const data = await res.json();
+    // 页面居中提示弹窗
+    document.getElementById("tipText").innerText = data.msg;
+    document.getElementById("tipModal").style.display = "flex";
+    if (data.code === 200) {
+        // 清空本地缓存
+        localStorage.removeItem('isLogin');
+        localStorage.removeItem('loginUid');
+        localStorage.removeItem('loginName');
+        localStorage.removeItem('loginAccount');
+        localStorage.removeItem('collectNameList');
+        localStorage.removeItem('historyList');
+        document.cookie = "loginUid=;expires=0;path=/";
+        document.cookie = "isLogin=;expires=0;path=/";
+        // 2秒自动关闭并跳转登录
+        setTimeout(()=>{
+            closeTip();
+            location.href = "/login";
+        }, 2000);
+    }
 }
 </script>
 </body>

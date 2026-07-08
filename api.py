@@ -131,3 +131,25 @@ def reset_pwd():
         return jsonify({"code":200, "msg":msg})
     else:
         return jsonify({"code":400, "msg":msg})
+    
+# 修改用户信息接口
+@api_bp.route("/user/update_info", methods=["POST"])
+def user_update_info():
+    data = request.get_json()
+    user_id = data.get("user_id", 0)
+    new_name = data.get("username", "").strip()
+    new_pwd = data.get("password", "").strip()
+    if not user_id or not new_name or not new_pwd:
+        return jsonify({"code": 400, "msg": "用户名、密码不能为空"})
+    res = db.update_user_info(user_id, new_name, new_pwd)
+    return jsonify({"code": 200 if res else 400, "msg": "修改成功" if res else "修改失败"})
+
+# 注销账号，清空用户全部数据接口
+@api_bp.route("/user/destroy_all", methods=["POST"])
+def user_destroy_all():
+    data = request.get_json()
+    user_id = data.get("user_id", 0)
+    if not user_id:
+        return jsonify({"code": 400, "msg": "用户ID缺失"})
+    res = db.delete_user_all_related(user_id)
+    return jsonify({"code": 200 if res else 400, "msg": "账号已注销，数据全部清除" if res else "注销失败"})

@@ -192,3 +192,44 @@ def get_all_poems():
     res = conn.execute("SELECT content FROM poem").fetchall()
     conn.close()
     return [r[0] for r in res]
+
+# 修改用户名、密码
+def update_user_info(uid, new_username, new_pwd):
+    conn = get_conn()
+    try:
+        conn.execute("UPDATE user SET username=?, password=? WHERE id=?", (new_username, new_pwd, uid))
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        print("修改用户信息失败：", e)
+        return False
+    finally:
+        conn.close()
+
+# 注销账号：删除用户+全部收藏+全部起名记录+起名子记录
+def delete_user_all_related(uid):
+    conn = get_conn()
+    cur = conn.cursor()
+    try:
+        # 1 删除收藏
+        cur.execute("DELETE FROM collect_name WHERE user_id = ?", (uid,))
+        # 2 查询该用户所有起名记录ID
+        record_list = cur.execute("SELECT id FROM search_record WHERE user_id = ?", (uid,)).fetchall()
+        record_ids = [row["id"] for row in record_list]
+        # 3 删除起名详情子数据
+        if record_ids:
+            placeholder = ",".join(["?"] * len(record_ids))
+            cur.execute(f"DELETE FROM search_name_item WHERE record_id IN ({placeholder})", record_ids)
+        # 4 删除主起名记录
+        cur.execute("DELETE FROM search_record WHERE user_id = ?", (uid,))
+        # 5 删除用户本身
+        cur.execute("DELETE FROM user WHERE id = ?", (uid,))
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        print("注销清空数据失败：", e)
+        return False
+    finally:
+        conn.close()
