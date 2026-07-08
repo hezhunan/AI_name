@@ -126,7 +126,7 @@
             font-size: 0.95rem;
             margin-top: 52px;
         }
-        /* 弹窗样式与登录弹窗完全匹配 */
+        /* 弹窗基础样式，提升z-index防止被详情遮挡 */
         .modal-mask {
             position: fixed;
             top: 0;
@@ -134,7 +134,7 @@
             width: 100vw;
             height: 100vh;
             background: rgba(0, 0, 0, 0.55);
-            z-index: 9999;
+            z-index: 10001;
             display: none;
             align-items: center;
             justify-content: center;
@@ -144,6 +144,8 @@
             background: white;
             padding: 32px 24px;
             border-radius: 16px;
+            position: relative;
+            z-index: 10002;
         }
         .modal-title{display:none;}
         .modal-desc{text-align:center;color:#333;font-size:1rem;margin-bottom:28px}
@@ -194,10 +196,16 @@
             border-left: 4px solid #2c7be5;
             border-radius: 16px;
             margin: 12px 0;
+            display: grid;
+            gap: 10px;
+            position: relative;
         }
         .suggestion h3 {
             margin: 0 0 8px;
             color: #0f172a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .meta {
             color: #475569;
@@ -211,11 +219,36 @@
         .list li {
             margin-bottom: 8px;
         }
+        /* 星星收藏样式 完全对齐index */
+        .star-btn {
+            font-size: 32px;
+            cursor: pointer;
+            user-select: none;
+            line-height: 1;
+            background: transparent;
+            width: auto;
+            max-width: unset;
+            padding: 0;
+            margin: 0;
+            border: none;
+            pointer-events: auto;
+            z-index: 2;
+        }
+        .star-empty { color: #cccccc; }
+        .star-fill { color: #ffcc00; }
     </style>
 </head>
 <body>
-    <!-- 转义过滤，解决中文/特殊字符乱码、注入风险 -->
-    <span id="hiddenUsername" style="display: none;">{{ username|e }}</span>
+    <!-- 取消单个收藏专用弹窗 -->
+    <div class="modal-mask" id="cancelCollectModal">
+        <div class="modal-box">
+            <p class="modal-desc">确定取消收藏该名字？</p>
+            <div class="modal-btn-row">
+                <button class="modal-cancel-btn" onclick="closeCancelCollectModal()">取消</button>
+                <button class="modal-sure-btn" onclick="confirmCancelSingleName()">确定</button>
+            </div>
+        </div>
+    </div>
     <!-- 收藏批量删除确认弹窗 -->
     <div class="modal-mask" id="confirmModal">
         <div class="modal-box">
@@ -226,7 +259,7 @@
             </div>
         </div>
     </div>
-    <!-- 删除确认弹窗 -->
+    <!-- 删除账号确认弹窗 -->
     <div class="modal-mask" id="destroyConfirmModal">
         <div class="modal-box">
             <p class="modal-desc">确定注销账号？所有用户、收藏、浏览记录将永久删除，无法恢复！</p>
@@ -236,13 +269,13 @@
             </div>
         </div>
     </div>
-    <!-- 操作成功提示弹窗 -->
+    <!-- 全局提示弹窗 -->
     <div class="modal-mask" id="tipModal">
         <div class="modal-box" style="padding:28px 32px;">
-            <!-- 新增font-size放大文字，加粗 -->
             <p class="modal-desc" id="tipText" style="font-size:1.25rem;font-weight:500;">修改成功！</p>
         </div>
     </div>
+    <!-- 起名详情弹窗 -->
     <div class="history-modal-mask" id="historyDetailModal">
         <div class="history-modal-box">
             <div id="historyModalContent"></div>
@@ -280,14 +313,12 @@
         </div>
         <div class="footer">Powered by AI 起名引擎 · 传统文化起名系统</div>
     </div>
-    <!-- 新增：修改用户信息弹窗，独立内联样式，不修改页面原有样式 -->
+    <!-- 修改用户信息弹窗 -->
     <div id="editModalMask" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;">
         <div style="width:min(92%,400px);background:#fff;padding:32px;border-radius:12px;">
             <h2 style="text-align:center;margin-top:0;color:#222;">修改用户信息</h2>
-            <!-- 统一错误提示文字，空值/密码不一致都在这里显示 -->
             <div id="pwdTipText" style="text-align:center;color:#c41e3a;font-weight:bold;margin:8px 0 12px;display:none;"></div>
             <label style="display:block;margin:20px 0 6px;font-weight:bold;color:#333;">新用户名</label>
-            <!-- placeholder改为输入昵称，移除value填充 -->
             <input id="editUsername" type="text" style="width:100%;padding:12px 14px;border:1px solid #ddd;border-radius:8px;font-size:1rem;" placeholder="输入昵称">
             <label style="display:block;margin:20px 0 6px;font-weight:bold;color:#333;">新密码</label>
             <input id="editPwd" type="password" style="width:100%;padding:12px 14px;border:1px solid #ddd;border-radius:8px;font-size:1rem;" placeholder="输入新密码">
@@ -305,7 +336,32 @@ let deleteTargetIdList = [];
 let allCollectData = [];
 let allHistoryData = [];
 const loginUid = localStorage.getItem("loginUid");
+// 星星收藏全局变量
+let waitCancelSingleName = "";
+let savedNameList = [];
+let currentHistoryIndex = -1;
 
+// 通用提示弹窗 2秒自动关闭
+function showTip(msg){
+    document.getElementById("tipText").innerText = msg;
+    document.getElementById("tipModal").style.display = "flex";
+    setTimeout(()=>closeTip(), 2000);
+}
+function closeTip(){
+    document.getElementById("tipModal").style.display = "none";
+}
+
+// 取消单个收藏弹窗控制
+function openCancelCollectModal(name){
+    waitCancelSingleName = name;
+    document.getElementById("cancelCollectModal").style.display = "flex";
+}
+function closeCancelCollectModal(){
+    waitCancelSingleName = "";
+    document.getElementById("cancelCollectModal").style.display = "none";
+}
+
+// 页面加载
 window.onload = async function () {
     const path = window.location.pathname;
     const whiteList = ['/login','/register','/tourist'];
@@ -320,6 +376,7 @@ window.onload = async function () {
     }
     await loadCollectData();
     await loadHistoryData();
+    await refreshAllStar();
 }
 function goHomePage(){location.href="/index"}
 function logout(){
@@ -377,12 +434,7 @@ function renderCollectList(){
 function openConfirmDialog(){
     const checked = document.querySelectorAll(".item-checkbox:checked");
     if(checked.length===0){
-        document.getElementById("tipText").innerText="请勾选要删除的收藏";
-        document.getElementById("tipModal").style.display="flex";
-        // 新增2秒自动关闭
-        setTimeout(()=>{
-            closeTip();
-        }, 1500);
+        showTip("请勾选要删除的收藏");
         return;
     }
     deleteTargetIdList = Array.from(checked).map(i=>parseInt(i.dataset.id));
@@ -392,9 +444,6 @@ function openConfirmDialog(){
 function closeConfirmModal(){
     document.getElementById("confirmModal").style.display="none";
     deleteTargetIdList=[];
-}
-function closeTip(){
-    document.getElementById("tipModal").style.display="none";
 }
 async function executeDelete(){
     await fetch("/api/collect/batch_del",{
@@ -408,12 +457,7 @@ async function executeDelete(){
     closeConfirmModal();
     toggleEditMode();
     await loadCollectData();
-    document.getElementById("tipText").innerText="删除收藏成功！";
-    document.getElementById("tipModal").style.display="flex";
-    // 2秒自动关闭提示弹窗
-    setTimeout(()=>{
-        closeTip();
-    }, 1500);
+    show("删除收藏成功！");
 }
 async function loadHistoryData(){
     const res = await fetch("/api/search/list",{
@@ -439,25 +483,32 @@ function renderHistoryList(){
     })
     wrap.innerHTML = html;
 }
-// 修复核心：字段名与后端返回对齐，增加异常捕获
+// 打开起名详情弹窗（核心：渲染星星）
 async function openHistoryDetail(index){
+    currentHistoryIndex = index;
     const record = allHistoryData[index];
-    console.log("点击记录：", record);
+    const uid = parseInt(loginUid);
     try{
+        // 预加载收藏列表，判断星星状态
+        const collectRes = await fetch("/api/collect/list",{
+            method:"POST",headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({user_id:uid})
+        })
+        const collectJson = await collectRes.json();
+        const collectNameSet = new Set(collectJson.data.map(item=>item.full_name));
+        savedNameList = collectJson.data.map(item=>item.full_name);
+
         const fetchOptions = {
             method:"POST",
             headers:{"Content-Type":"application/json"},
             body:JSON.stringify({
-                user_id:parseInt(loginUid),
+                user_id:uid,
                 record_id:record.id
             })
         };
         const res = await fetch("/api/search/detail", fetchOptions);
-        if (!res.ok) {
-            throw new Error(`接口请求失败，状态码：${res.status}`);
-        }
+        if (!res.ok) throw new Error(`接口请求失败，状态码：${res.status}`);
         const ret = await res.json();
-        console.log("接口完整返回数据：", ret);
         const wrap = document.getElementById("historyModalContent");
         if(ret.code !== 200){
             wrap.innerHTML=`<p style="color:red;font-size:1.1rem;">${ret.msg}</p>`;
@@ -488,8 +539,19 @@ async function openHistoryDetail(index){
             suggestionList.forEach(nameItem=>{
                 const tags = nameItem.source_tags || [];
                 const nameMean = nameItem.meaning || "暂无释义";
-                html += `<div class="suggestion">
-                    <h3>${nameItem.name}</h3>
+                const starIcon = collectNameSet.has(nameItem.name) ? "★" : "☆";
+                const starClass = collectNameSet.has(nameItem.name) ? "star-fill" : "star-empty";
+                html += `<div class="suggestion" data-name="${nameItem.name}">
+                    <h3>
+                        ${nameItem.name}
+                        <span 
+                            class="star-btn ${starClass}" 
+                            data-target="${nameItem.name}"
+                            data-record-id="${record.id}"
+                            data-five="${d.birth_element}"
+                            data-mean="${nameMean.replace(/'/g,"\\'")}"
+                        >${starIcon}</span>
+                    </h3>
                     <p>${nameMean}</p>
                     <p class="meta">影响标签：${tags.join("，")}</p>
                 </div>`
@@ -507,26 +569,119 @@ async function openHistoryDetail(index){
 function closeHistoryModal(){
     document.getElementById("historyDetailModal").style.display="none";
 }
-// 1. 设置下拉菜单控制
+// 星星点击监听 阻止冒泡
+document.addEventListener("click", function(e) {
+    const targetStar = e.target.closest(".star-btn");
+    if (!targetStar) return;
+    e.stopPropagation();
+    const targetName = targetStar.dataset.target;
+    const recordId = parseInt(targetStar.dataset.recordId);
+    const fiveAttr = targetStar.dataset.five;
+    const meanText = targetStar.dataset.mean;
+    toggleSingleStar(targetName, recordId, fiveAttr, meanText);
+});
+// 收藏/取消核心逻辑
+async function toggleSingleStar(name, recordId, fiveAttr, mean){
+    const uid = parseInt(loginUid);
+    if (!uid) {
+        showTip("请先登录");
+        return;
+    }
+    const isCollected = savedNameList.includes(name);
+    if (!isCollected) {
+        // 新增收藏
+        try {
+            const res = await fetch("/api/collect/add", {
+                method: "POST",
+                headers: {"Content-Type":"application/json"},
+                body: JSON.stringify({
+                    user_id: uid,
+                    full_name: name,
+                    meaning: mean,
+                    five_attr: fiveAttr,
+                    record_id: recordId
+                })
+            })
+            await res.json();
+            await loadCollectData();
+            await refreshAllStar();
+            showTip("收藏成功");
+        } catch (err) {
+            showTip("收藏失败，请重试");
+        }
+    } else {
+        // 已收藏，弹出确认取消
+        openCancelCollectModal(name);
+    }
+}
+// 确认取消单个收藏
+async function confirmCancelSingleName(){
+    const name = waitCancelSingleName;
+    closeCancelCollectModal();
+    const uid = parseInt(loginUid);
+    try {
+        await fetch("/api/collect/remove", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({user_id: uid, full_name: name})
+        })
+        await loadCollectData();
+        await refreshAllStar();
+        showTip("取消收藏成功");
+        // 2秒后刷新当前弹窗星星
+        setTimeout(async ()=>{
+            if(currentHistoryIndex > -1){
+                await openHistoryDetail(currentHistoryIndex);
+            }
+        },2000);
+    } catch (err) {
+        showTip("取消收藏失败");
+    }
+}
+// 刷新页面所有星星状态
+async function refreshAllStar(){
+    const uid = parseInt(loginUid);
+    if (!uid) return;
+    try {
+        const res = await fetch("/api/collect/list", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({user_id: uid})
+        })
+        const data = await res.json();
+        savedNameList = data.data.map(item => item.full_name);
+        document.querySelectorAll('.star-btn').forEach(star => {
+            const n = star.dataset.target;
+            if (savedNameList.includes(n)) {
+                star.innerText = "★";
+                star.classList.remove('star-empty');
+                star.classList.add('star-fill');
+            } else {
+                star.innerText = "☆";
+                star.classList.remove('star-fill');
+                star.classList.add('star-empty');
+            }
+        })
+    } catch (err) {
+        console.error("刷新星星失败",err);
+    }
+}
+// 设置下拉菜单
 const settingBtn = document.getElementById("settingBtn");
 const dropdown = document.getElementById("settingDropdown");
 settingBtn.addEventListener("click", () => {
     dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
 });
-// 点击空白关闭下拉
 document.addEventListener("click", (e) => {
     if (!settingBtn.contains(e.target) && !dropdown.contains(e.target)) {
         dropdown.style.display = "none";
     }
 });
-
-// 2. 编辑信息弹窗开关
+// 修改信息弹窗
 function openEditModal(){
-    // 打开弹窗清空错误提示
     document.getElementById("pwdTipText").style.display = "none";
     dropdown.style.display = "none";
     document.getElementById("editModalMask").style.display = "flex";
-    // 清空输入框，不再自动填充原用户名
     document.getElementById("editUsername").value = "";
     document.getElementById("editPwd").value = "";
     document.getElementById("editPwdConfirm").value = "";
@@ -534,24 +689,18 @@ function openEditModal(){
 function closeEditModal() {
     document.getElementById("editModalMask").style.display = "none";
 }
-
-// 3. 提交修改用户名&密码（调用后端更新数据库）
 async function submitEdit() {
-    // 每次提交先隐藏提示文字
     document.getElementById("pwdTipText").style.display = "none";
     const uid = parseInt(localStorage.getItem("loginUid"));
     const newUser = document.getElementById("editUsername").value.trim();
     const newPwd = document.getElementById("editPwd").value.trim();
     const newPwdConfirm = document.getElementById("editPwdConfirm").value.trim();
-
-    // 空值校验：顶部弹窗红字提示
     if (!newUser || !newPwd || !newPwdConfirm) {
         const tipDom = document.getElementById("pwdTipText");
-        tipDom.innerText = "昵称、新密码、确认密码不能有为空";
+        tipDom.innerText = "昵称、新密码、确认密码不能为空";
         tipDom.style.display = "block";
         return;
     }
-    // 两次密码不一致提示
     if(newPwd !== newPwdConfirm){
         const tipDom = document.getElementById("pwdTipText");
         tipDom.innerText = "两次输入的密码不一致";
@@ -564,7 +713,6 @@ async function submitEdit() {
         body: JSON.stringify({user_id: uid, username: newUser, password: newPwd})
     });
     const data = await res.json();
-    // 修改成功使用全局居中提示弹窗
     document.getElementById("tipText").innerText = data.msg;
     document.getElementById("tipModal").style.display = "flex";
     if (data.code === 200) {
@@ -572,18 +720,14 @@ async function submitEdit() {
         setTimeout(()=>location.reload(),1200);
     }
 }
-
-// 4. 注销账号（删除用户所有关联数据）
+// 注销账号
 function confirmDestroy() {
     dropdown.style.display = "none";
-    // 打开页面居中注销确认弹窗，不再使用浏览器顶部confirm
     document.getElementById("destroyConfirmModal").style.display = "flex";
 }
-// 关闭注销确认弹窗
 function closeDestroyConfirm(){
     document.getElementById("destroyConfirmModal").style.display = "none";
 }
-// 点击确定注销，执行删除逻辑
 function executeDestroy(){
     closeDestroyConfirm();
     destroyAccount();
@@ -596,11 +740,9 @@ async function destroyAccount() {
         body: JSON.stringify({user_id: uid})
     });
     const data = await res.json();
-    // 页面居中提示弹窗
     document.getElementById("tipText").innerText = data.msg;
     document.getElementById("tipModal").style.display = "flex";
     if (data.code === 200) {
-        // 清空本地缓存
         localStorage.removeItem('isLogin');
         localStorage.removeItem('loginUid');
         localStorage.removeItem('loginName');
@@ -609,7 +751,6 @@ async function destroyAccount() {
         localStorage.removeItem('historyList');
         document.cookie = "loginUid=;expires=0;path=/";
         document.cookie = "isLogin=;expires=0;path=/";
-        // 2秒自动关闭并跳转登录
         setTimeout(()=>{
             closeTip();
             location.href = "/login";
@@ -617,5 +758,7 @@ async function destroyAccount() {
     }
 }
 </script>
+<!-- 隐藏用户名用于渲染标题 -->
+<span id="hiddenUsername" style="display: none;">{{ username|e }}</span>
 </body>
 </html>
