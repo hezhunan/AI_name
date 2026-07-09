@@ -109,7 +109,7 @@ def search_detail():
         traceback.print_exc()
         return jsonify({"code":500, "msg":"服务器查询异常"})
     
-# 新增：忘记密码重置接口
+# 忘记密码重置接口
 @api_bp.route("/reset_pwd", methods=["POST"])
 def reset_pwd():
     data = request.get_json() if request.is_json else request.form
@@ -117,7 +117,6 @@ def reset_pwd():
     new_pwd = data.get("new_pwd", "").strip()
     confirm_pwd = data.get("confirm_pwd", "").strip()
 
-    # 参数校验
     if len(account) != 11 or not account.isdigit():
         return jsonify({"code":400, "msg":"账号必须为11位手机号"})
     if not new_pwd or not confirm_pwd:
@@ -125,7 +124,6 @@ def reset_pwd():
     if new_pwd != confirm_pwd:
         return jsonify({"code":400, "msg":"两次输入密码不一致"})
     
-    # 调用db更新密码
     ok, msg = db.reset_user_password(account, new_pwd)
     if ok:
         return jsonify({"code":200, "msg":msg})
@@ -141,10 +139,10 @@ def user_update_info():
         return jsonify({"code": 400, "msg": "用户ID不能为空"})
     new_name = data.get("username", "").strip()
     new_pwd = data.get("password", "").strip()
-    # 至少传一项才能修改
+
     if not new_name and not new_pwd:
         return jsonify({"code": 400, "msg": "请填写需要修改的内容"})
-    # 调用db，按需更新
+    
     res = db.update_user_info(user_id, new_name, new_pwd)
     return jsonify({"code": 200 if res else 400, "msg": "修改成功" if res else "修改失败"})
 

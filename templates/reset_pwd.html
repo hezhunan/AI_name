@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>重置密码</title>
+    <title>重置密码 - AI新生儿智能起名系统</title>
     <style>
         :root {
             color-scheme: light;
@@ -112,7 +112,6 @@
             font-size: 0.95rem;
             margin-top: 40px;
         }
-        /* 新增全局提示弹窗样式 */
         .global-tip-mask {
             position: fixed;
             inset: 0;
@@ -158,7 +157,6 @@
         <div class="footer">Powered by AI 起名引擎 · 兼顾传统文化与现代美学</div>
     </div>
 
-<!-- 全局弹窗提示 -->
 <div class="global-tip-mask" id="tipMask">
     <div class="global-tip-box" id="tipText"></div>
 </div>
@@ -169,21 +167,17 @@ const errTip = document.getElementById('errTip');
 const tipMask = document.getElementById('tipMask');
 const tipText = document.getElementById('tipText');
 
-// 显示弹窗
 function showTip(msg) {
     tipText.innerText = msg;
     tipMask.style.display = 'flex';
 }
-// 关闭弹窗
 function hideTip() {
     tipMask.style.display = 'none';
 }
 
 form.addEventListener('submit', async function(e) {
-    // 阻止表单原生跳转
     e.preventDefault();
     errTip.innerText = '';
-    // 获取输入值
     const account = document.getElementById('inpAccount').value.trim();
     const new_pwd = document.getElementById('inpNewPwd').value.trim();
     const confirm_pwd = document.getElementById('inpConfirmPwd').value.trim();

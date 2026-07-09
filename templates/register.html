@@ -113,7 +113,7 @@
             font-size: 0.95rem;
             margin-top: 40px;
         }
-        /* ========== 弹窗样式（精简按钮相关样式） ========== */
+        /* ========== 弹窗样式 ========== */
         .modal-mask {
             position: fixed;
             top: 0;
@@ -163,14 +163,12 @@
         </div>
         <div class="footer">Powered by AI 起名引擎 · 兼顾传统文化与现代美学</div>
     </div>
-    <!-- 弹窗DOM：移除按钮组，仅保留文字 -->
     <div class="modal-mask" id="modalMask">
         <div class="modal-box">
             <p class="modal-text" id="modalMsg"></p>
         </div>
     </div>
 <script>
-    // 弹窗控制函数
     function showModalTip(text) {
         document.getElementById('modalMsg').textContent = text;
         document.getElementById('modalMask').style.display = 'flex';

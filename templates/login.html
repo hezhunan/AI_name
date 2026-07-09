@@ -115,7 +115,6 @@
             font-size: 0.95rem;
             margin-top: 40px;
         }
-        /* ========== 复制login1.html完整弹窗样式 ========== */
         .modal-mask {
             position: fixed;
             top: 0;
@@ -185,7 +184,7 @@
                 <button class="btn-guest" onclick="goGuest()">游客访问</button>
                 <button class="btn-login" onclick="doLogin()">登录</button>
             </div>
-            <!-- 修改：弹性左右分布，左注册、右忘记密码 -->
+            <!-- 弹性左右分布，左注册、右忘记密码 -->
             <p class="tip-desc">
                 <span>没有账号？<span class="tip-link" onclick="jumpRegister()">注册</span>后即可使用智能起名，收藏名字功能</span>
                 <span class="tip-link" onclick="jumpResetPwd()">忘记密码</span>
@@ -193,7 +192,6 @@
         </div>
         <div class="footer">Powered by AI 起名引擎 · 兼顾传统文化与现代美学</div>
     </div>
-    <!-- 弹窗DOM完全不变 -->
     <div class="modal-mask" id="modalMask">
         <div class="modal-box">
             <p class="modal-text" id="modalMsg"></p>
@@ -204,7 +202,6 @@
         </div>
     </div>
 <script>
-    // 弹窗配套函数原样保留
     function showModalTip(text) {
         document.getElementById('modalMsg').textContent = text;
         document.getElementById('modalMask').style.display = 'flex';
@@ -221,7 +218,6 @@
     function jumpRegister() {
         window.location.href = "/register";
     }
-    // 新增：忘记密码跳转函数
     function jumpResetPwd() {
         window.location.href = "/reset_pwd";
     }
@@ -229,7 +225,7 @@
         showModalTip("游客访问仅支持基础起名，无法使用名字收藏功能");
     }
 
-    // 仅修改登录成功逻辑：新增写入Cookie loginUid，页面HTML/CSS完全不动
+    // 仅修改登录成功逻辑：新增写入Cookie loginUid
     async function doLogin() {
         const account = document.getElementById('loginAccount').value.trim();
         const pwd = document.getElementById('loginPwd').value.trim();
@@ -244,9 +240,7 @@
         })
         const data = await res.json();
         if(data.code !== 200) return setTip(data.msg);
-        // 新增关键代码：写入Cookie，后端才能读取loginUid实现入库
         document.cookie = `loginUid=${data.user_id};path=/;max-age=86400`;
-        // localStorage存储不变
         localStorage.setItem("isLogin", "1");
         localStorage.setItem("loginUid", data.user_id);
         localStorage.setItem("loginName", data.username);

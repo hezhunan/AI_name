@@ -15,7 +15,7 @@
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; background: radial-gradient(circle at top, #f6fbff 0%, #eef3f8 60%, #e2eaf5 100%); }
         .container { width: min(100%, 1100px); margin: 0 auto; padding: 24px; }
-        /* 顶部卡片flex两端布局 */
+
         .hero { padding: 24px 0; width: 100%; }
         .hero .card {
             display: flex;
@@ -66,10 +66,10 @@
             max-width: unset;
             padding: 0;
             margin: 0;
-            border: none; /* 无额外边框 */
+            border: none; 
         }
-        .star-empty { color: #cccccc; } /* 未收藏灰色空心 */
-        .star-fill { color: #ffcc00; } /* 已收藏黄色实心 */
+        .star-empty { color: #cccccc; } 
+        .star-fill { color: #ffcc00; } 
         .restart-btn-wrap { text-align: center; margin-top: 30px; }
         /* 加载弹窗：无外层灰色遮罩，仅弹窗自身半透明白色背景 */
         .loading-mask {
@@ -174,13 +174,13 @@
     </style>
 </head>
 <body>
-    <!-- 轻提示弹窗：移除按钮，仅文字，自适应宽度 -->
+    <!-- 轻提示弹窗 -->
     <div class="tip-modal-mask" id="tipModalMask">
         <div class="tip-modal-box">
             <p class="tip-modal-desc" id="tipModalText"></p>
         </div>
     </div>
-    <!-- 取消收藏双按钮确认弹窗（保留取消按钮） -->
+    <!-- 取消收藏双按钮确认弹窗 -->
     <div class="confirm-cancel-mask" id="confirmCancelMask">
         <div class="confirm-cancel-box">
             <p class="confirm-cancel-desc">确定取消收藏该名字？</p>
@@ -237,6 +237,18 @@
                         <option value="male" {% if request.form.gender == 'male' %}selected{% endif %}>男</option>
                         <option value="female" {% if request.form.gender == 'female' %}selected{% endif %}>女</option>
                     </select>
+                    <label for="need_words">指定用字（多个用逗号分隔，无需请填无）</label>
+                    <input id="need_words" name="need_words" type="text" placeholder="如：泽、涵，无则填写无" value="{{ request.form.need_words or '' }}">
+
+                    <label for="avoid_words">避讳字（多个用逗号分隔，无需请填无）</label>
+                    <input id="avoid_words" name="avoid_words" type="text" placeholder="如：强、伟，无则填写无" value="{{ request.form.avoid_words or '' }}">
+
+                    <label for="style_prefer">起名风格偏好</label>
+                    <select id="style_prefer" name="style_prefer">
+                        <option value="诗意" {% if request.form.style_prefer == '诗意' %}selected{% endif %}>诗意国风</option>
+                        <option value="大气" {% if request.form.style_prefer == '大气' %}selected{% endif %}>大气开阔</option>
+                        <option value="简约" {% if request.form.style_prefer == '简约' or not request.form.style_prefer %}selected{% endif %}>简约干净</option>
+                    </select>
                     <label for="birth">出生日期和时间</label>
                     <input id="birth" name="birth" type="datetime-local" value="{{ request.form.birth or '' }}" required>
                     <button type="submit">生成宝宝名字</button>
@@ -254,6 +266,11 @@
                         <div class="tag">月柱：{{ show_bazi.month }}</div>
                         <div class="tag">日柱：{{ show_bazi.day }}</div>
                         <div class="tag">时柱：{{ show_bazi.hour }}</div>
+                        <strong>指定用字：</strong>{{ db_bazi.need_words if db_bazi.need_words else "无" }}
+                        &nbsp;&nbsp;
+                        <strong>避讳字：</strong>{{ db_bazi.avoid_words if db_bazi.avoid_words else "无" }}
+                        &nbsp;&nbsp;
+                        <strong>风格偏好：</strong>{{ db_bazi.style_prefer if db_bazi.style_prefer else "简约" }}
                     </div>
                     <div class="meta">生肖：{{ show_bazi.zodiac }} · 五行：{{ show_bazi.birth_element }} · 时辰：{{ result.time_period }}</div>
                     <div class="meta">八字全局分析：{{ show_bazi.balance }}</div>
@@ -311,7 +328,6 @@ function closeTipModal() {
 function showTipModal(msg) {
     tipModalText.innerText = msg;
     tipModalMask.style.display = 'flex';
-    // 1000ms后自动关闭
     setTimeout(() => {
         closeTipModal();
     }, 1000);

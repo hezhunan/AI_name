@@ -45,7 +45,7 @@ def add_user(account, username, password):
     finally:
         conn.close()
 
-        # ========== 新增：重置用户密码 ==========
+        # ========== 重置用户密码 ==========
 def reset_user_password(account, new_pwd):
     """根据手机号账号修改密码，返回是否修改成功"""
     conn = get_conn()
@@ -60,7 +60,7 @@ def reset_user_password(account, new_pwd):
     conn.close()
     return True, "密码重置成功"
 
-# ==================== 起名记录存储（事务保证多端写入不残缺） ====================
+# ==================== 起名记录存储 ====================
 def add_full_search_record(user_id, input_data, pillar, analysis):
     conn = get_conn()
     cur = conn.cursor()
@@ -69,8 +69,9 @@ def add_full_search_record(user_id, input_data, pillar, analysis):
             INSERT INTO search_record (
                 user_id, surname, gender, birth,
                 pillar_year, pillar_month, pillar_day, pillar_hour,
-                zodiac, time_period, birth_element, balance, full_analysis
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                zodiac, time_period, birth_element, balance, full_analysis,
+                need_words, avoid_words, style_prefer
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             user_id,
             input_data["surname"],
@@ -84,7 +85,10 @@ def add_full_search_record(user_id, input_data, pillar, analysis):
             pillar["time_period"],
             analysis["birth_element"],
             json.dumps(analysis["balance"], ensure_ascii=False, default=str),
-            json.dumps(analysis["full_analysis"], ensure_ascii=False, default=str)
+            json.dumps(analysis["full_analysis"], ensure_ascii=False, default=str),
+            input_data.get("need_words", "无"),
+            input_data.get("avoid_words", "无"),
+            input_data.get("style_prefer", "简约")
         ))
         record_id = cur.lastrowid
         # 批量插入每条推荐名字
@@ -107,7 +111,7 @@ def add_full_search_record(user_id, input_data, pillar, analysis):
     finally:
         conn.close()
 
-# 根据用户ID获取所有历史起名（多端统一读取）
+# 根据用户ID获取所有历史起名
 def get_user_search_list(user_id):
     conn = get_conn()
     rows = conn.execute("""
@@ -119,7 +123,7 @@ def get_user_search_list(user_id):
     conn.close()
     return [dict(r) for r in rows]
 
-# 单条完整记录详情（跨设备查看同一条记录）
+# 单条完整记录详情
 def get_full_search_by_record_id(record_id, user_id):
     conn = get_conn()
     main_row = conn.execute("""
@@ -140,7 +144,7 @@ def get_full_search_by_record_id(record_id, user_id):
     conn.close()
     return main_data
 
-# ==================== 收藏模块（多端同步增删） ====================
+# ==================== 收藏模块 ====================
 def add_collect(user_id, name, meaning, five_attr, record_id):
     conn = get_conn()
     exist = conn.execute(
@@ -164,7 +168,6 @@ def get_user_collect_list(user_id):
     conn.close()
     return [dict(i) for i in res]
 
-# 修复括号语法错误
 def batch_del_collect(user_id, del_ids):
     conn = get_conn()
     place = ",".join(["?"] * len(del_ids))
@@ -194,7 +197,6 @@ def get_all_poems():
     return [r[0] for r in res]
 
 # 修改用户名、密码
-# db.py 里的 update_user_info
 def update_user_info(user_id, username, password):
     conn = sqlite3.connect("db.db")
     cur = conn.cursor()

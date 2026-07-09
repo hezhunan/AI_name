@@ -103,7 +103,7 @@ def get_full_birth_pillar(dt: datetime):
     # 修复：补齐第三个参数 d
     month_zhu = get_month_gz(y, m, d)
     day_zhu = get_day_gz(y, m, d)
-    shi_zhu, shi_zhi = get_shichen_gz(y, m, d, h)
+    shi_zhu, shi_zhi = get_shichen_gz(y, m, h)
     zodiac = ZODIAC_MAP[year_zhu[1]]
     hour_text = f"{h}时"
     return {
@@ -133,8 +133,8 @@ def local_fallback_name(surname, target_five):
         })
     return res
 
-# AI八字起名
-def glm_analysis_name(surname, gender, pillar_info):
+# AI八字起名【修复：新增三个入参】
+def glm_analysis_name(surname, gender, pillar_info, need_words, avoid_words, style_prefer):
     print("===== Start Zhipu GLM API Call =====")
     print(f"Params: surname={surname}, gender={gender}, pillar={pillar_info}")
     system_prompt = """
@@ -142,7 +142,7 @@ def glm_analysis_name(surname, gender, pillar_info):
 硬性强制规则，必须严格遵守：
 1. 给定四柱不可修改，只基于固定八字分析；
 2. 根据八字旺衰得出唯一喜用神（金/木/水/火/土其中一个）；
-3. 【最重要】每次调用必须生成**完全不同、从未出现过**的3个双字名字，禁止复用之前生成过的字词、组合；
+3. 【最重要】每次调用必须生成**完全不同、从未出现过**的3个双字或单字名字，禁止复用之前生成过的字词、组合；
 4. 名字风格不局限古诗词，支持两种路线自由穿插搭配：
    ① 国风雅致款；② 现代简约干净清爽款，两种风格随机混合，兼顾传统与当代审美；
 5. 男名大气开阔、格局宏大；女名温婉柔和、干净清新；
@@ -173,7 +173,7 @@ JSON固定结构：
 约束：
 - full_analysis 固定4条；suggestions固定3个名字；
 - 严禁重复名字、重复寓意、重复标签文案；
-- 绝对不允许修改传入的四柱干支，仅做命理分析起名。
+- 绝对不允许修改传入的四柱干支，仅做命理分析。
 """
     user_prompt = f"""
 姓氏：{surname}
@@ -183,6 +183,9 @@ JSON固定结构：
 月柱：{pillar_info['month']}
 日柱：{pillar_info['day']}
 时柱：{pillar_info['hour']}
+指定用字：{need_words}，若不是“无”，名字中尽量包含这些汉字；
+避讳字：{avoid_words}，若不是“无”，所有名字严禁出现这些汉字；
+风格偏好：{style_prefer}，严格贴合该风格起名；
 本次生成3个全新无重复名字，可现代简约也可国风雅致；标签采用多维度多元化搭配，不要统一套用「喜用神+风格+性别」固定模板，严格输出纯JSON，不要额外文字说明。
 """
     try:
@@ -225,7 +228,7 @@ JSON固定结构：
             "suggestions": fallback_suggest
         }
 
-# ====================== 页面路由（仅渲染HTML，无API接口） ======================
+# ====================== 页面路由 ======================
 @app.route("/")
 def root_redirect():
     return redirect("/login")
@@ -244,12 +247,21 @@ def index_page():
     result = None
     error = None
     current_record_id = 0
-    db_bazi = {} # 顶层数据库标准八字变量，页面优先渲染这个
+    db_bazi = {}
     input_pillar = {}
+    # GET默认值，防止渲染报错
+    need_words = "无"
+    avoid_words = "无"
+    style_prefer = "简约"
+
     if request.method == "POST":
         sur = request.form.get("surname", "").strip()
         gender = request.form.get("gender")
         birth_str = request.form.get("birth")
+        # 读取表单参数
+        need_words = request.form.get("need_words", "无").strip()
+        avoid_words = request.form.get("avoid_words", "无").strip()
+        style_prefer = request.form.get("style_prefer", "简约").strip()
         front_login_uid = request.form.get("front_login_uid", "")
         if not sur or not birth_str:
             error = "姓氏与出生时间不能为空"
@@ -257,19 +269,27 @@ def index_page():
             birth_dt = datetime.strptime(birth_str, "%Y-%m-%dT%H:%M")
             pillar = get_full_birth_pillar(birth_dt)
             input_pillar = pillar
-            ai_res = glm_analysis_name(sur, gender, pillar)
+            # 传入新增三个参数
+            ai_res = glm_analysis_name(sur, gender, pillar, need_words, avoid_words, style_prefer)
             login_uid = request.cookies.get("loginUid", "")
             real_uid = 0
             if login_uid.isdigit():
                 real_uid = int(login_uid)
             elif front_login_uid.isdigit():
                 real_uid = int(front_login_uid)
-            
+
             current_record_id = 0
-            # 1、写入数据库（和user历史记录存储逻辑完全一致）
+
             if real_uid > 0:
                 try:
-                    input_info = {"surname":sur,"gender":gender,"birth":birth_str}
+                    input_info = {
+                        "surname": sur,
+                        "gender": gender,
+                        "birth": birth_str,
+                        "need_words": need_words,
+                        "avoid_words": avoid_words,
+                        "style_prefer": style_prefer
+                    }
                     analysis_info = {
                         "birth_element": ai_res["birth_element"],
                         "balance": ai_res["balance"],
@@ -279,12 +299,10 @@ def index_page():
                     current_record_id = db.add_full_search_record(real_uid, input_info, pillar, analysis_info)
                 except Exception as e:
                     traceback.print_exc()
-            
-            # 2、【核心复刻user页面】从数据库重读完整标准化记录
+
             if current_record_id > 0 and real_uid > 0:
                 db_full = db.get_full_search_by_record_id(current_record_id, real_uid)
                 if db_full:
-                    # 和user接口统一标准化字段
                     db_bazi = {
                         "year": db_full["pillar_year"],
                         "month": db_full["pillar_month"],
@@ -293,14 +311,17 @@ def index_page():
                         "zodiac": pillar["zodiac"],
                         "birth_element": db_full["birth_element"],
                         "balance": db_full["balance"],
-                        "full_analysis": db_full["full_analysis"]
+                        "full_analysis": db_full["full_analysis"],
+                        "need_words": db_full["need_words"],
+                        "avoid_words": db_full["avoid_words"],
+                        "style_prefer": db_full["style_prefer"]
                     }
                     result = {
-                        "input":{"surname":sur,"gender":gender,"birth":birth_str},
+                        "input": {"surname": sur, "gender": gender, "birth": birth_str},
                         "bazi": db_bazi,
-                        "time_period":pillar["time_period"],
-                        "suggestions":db_full["suggestions"],
-                        "record_id":current_record_id
+                        "time_period": pillar["time_period"],
+                        "suggestions": db_full["suggestions"],
+                        "record_id": current_record_id
                     }
             else:
                 # 游客无账号，兜底AI数据
@@ -312,34 +333,43 @@ def index_page():
                     "zodiac": pillar["zodiac"],
                     "birth_element": ai_res["birth_element"],
                     "balance": ai_res["balance"],
-                    "full_analysis": ai_res["full_analysis"]
+                    "full_analysis": ai_res["full_analysis"],
+                    "need_words": need_words,
+                    "avoid_words": avoid_words,
+                    "style_prefer": style_prefer
                 }
                 result = {
-                    "input":{"surname":sur,"gender":gender,"birth":birth_str},
+                    "input": {"surname": sur, "gender": gender, "birth": birth_str},
                     "bazi": db_bazi,
-                    "time_period":pillar["time_period"],
-                    "suggestions":ai_res["suggestions"],
-                    "record_id":0
+                    "time_period": pillar["time_period"],
+                    "suggestions": ai_res["suggestions"],
+                    "record_id": 0
                 }
-    # 单独把数据库来源八字db_bazi传给页面，最高优先级渲染
     return render_template("index.html", result=result, error=error, db_bazi=db_bazi)
 
-# 游客页面完全保留，不改动任何逻辑
+# 游客页面【同步新增三个参数】
 @app.route("/tourist", methods=["GET", "POST"])
 def tourist_page():
     result = None
     error = None
     render_bazi = {}
+    need_words = "无"
+    avoid_words = "无"
+    style_prefer = "简约"
     if request.method == "POST":
         sur = request.form.get("surname", "").strip()
         gender = request.form.get("gender")
         birth_str = request.form.get("birth")
+        need_words = request.form.get("need_words", "无").strip()
+        avoid_words = request.form.get("avoid_words", "无").strip()
+        style_prefer = request.form.get("style_prefer", "简约").strip()
         if not sur or not birth_str:
             error = "姓氏与出生时间不能为空"
         else:
             birth_dt = datetime.strptime(birth_str, "%Y-%m-%dT%H:%M")
             pillar = get_full_birth_pillar(birth_dt)
-            ai_res = glm_analysis_name(sur, gender, pillar)
+            # 传入三个偏好参数
+            ai_res = glm_analysis_name(sur, gender, pillar, need_words, avoid_words, style_prefer)
             render_bazi = {
                 "year": ai_res["year"],
                 "month": ai_res["month"],
@@ -348,13 +378,16 @@ def tourist_page():
                 "zodiac": pillar["zodiac"],
                 "birth_element": ai_res["birth_element"],
                 "balance": ai_res["balance"],
-                "full_analysis": ai_res["full_analysis"]
+                "full_analysis": ai_res["full_analysis"],
+                "need_words": need_words,
+                "avoid_words": avoid_words,
+                "style_prefer": style_prefer
             }
             result = {
-                "input":{"surname":sur,"gender":gender,"birth":birth_str},
-                "bazi":render_bazi,
-                "time_period":pillar["time_period"],
-                "suggestions":ai_res["suggestions"]
+                "input": {"surname": sur, "gender": gender, "birth": birth_str},
+                "bazi": render_bazi,
+                "time_period": pillar["time_period"],
+                "suggestions": ai_res["suggestions"]
             }
     return render_template("tourist.html", result=result, error=error, bazi=render_bazi)
 
@@ -372,13 +405,12 @@ def user_center():
         username = "游客"
     return render_template("user.html", username=username)
 
-# 新增：忘记密码重置页面路由
+# 忘记密码重置页面路由
 @app.route("/reset_pwd", methods=["GET", "POST"])
 def reset_pwd_page():
     msg = ""
     msg_type = ""
     if request.method == "POST":
-        # 表单提交，转发API逻辑，简易页面提示
         import requests
         try:
             res = requests.post("http://127.0.0.1:5000/api/reset_pwd", data=request.form)
@@ -394,7 +426,7 @@ def reset_pwd_page():
             msg_type = "error"
     return render_template("reset_pwd.html", msg=msg, msg_type=msg_type)
 
-# ========== 所有路由写完后，最后注册蓝图，解决AssertionError报错 ==========
+# ========== 注册蓝图 ==========
 app.register_blueprint(api_bp, url_prefix="/api")
 
 # 关键：host=0.0.0.0 局域网手机/平板全部可访问，实现多端共用数据库

@@ -61,7 +61,6 @@
             text-align: center;
             margin-top: 30px;
         }
-        /* 加载弹窗：移除外层灰色遮罩，仅弹窗自身半透明白色 */
         .loading-mask {
             position: fixed;
             inset: 0;
@@ -92,7 +91,6 @@
     </style>
 </head>
 <body>
-    <!-- 无外层灰色遮罩，仅居中半透明小弹窗 -->
     <div class="loading-mask" id="loadingMask">
         <div class="loading-box">
             <div class="loading-text">正在生成中...</div>
@@ -136,6 +134,18 @@
                     <select id="gender" name="gender">
                         <option value="male" {% if request.form.gender == 'male' %}selected{% endif %}>男</option>
                         <option value="female" {% if request.form.gender == 'female' %}selected{% endif %}>女</option>
+                    </select>
+                    <label for="need_words">指定用字（多个用逗号分隔，无需请填无）</label>
+                    <input id="need_words" name="need_words" type="text" placeholder="如：泽、涵，无则填写无" value="{{ request.form.need_words or '' }}">
+
+                    <label for="avoid_words">避讳字（多个用逗号分隔，无需请填无）</label>
+                    <input id="avoid_words" name="avoid_words" type="text" placeholder="如：强、伟，无则填写无" value="{{ request.form.avoid_words or '' }}">
+
+                    <label for="style_prefer">起名风格偏好</label>
+                    <select id="style_prefer" name="style_prefer">
+                        <option value="诗意" {% if request.form.style_prefer == '诗意' %}selected{% endif %}>诗意国风</option>
+                        <option value="大气" {% if request.form.style_prefer == '大气' %}selected{% endif %}>大气开阔</option>
+                        <option value="简约" {% if request.form.style_prefer == '简约' or not request.form.style_prefer %}selected{% endif %}>简约干净</option>
                     </select>
                     <label for="birth">出生日期和时间</label>
                     <input id="birth" name="birth" type="datetime-local" value="{{ request.form.birth or '' }}" required>
@@ -218,14 +228,13 @@ function restoreTouristCache() {
     }
     needRestoreCache = false;
 }
-// 重新生成：清空结果、回填表单，不弹窗、不提交，停留在输入页面
+// 清空结果、回填表单，不弹窗、不提交，停留在输入页面
 function autoRegen() {
     needRestoreCache = true;
     const resultWrap = document.getElementById('resultContainer');
     resultWrap.innerHTML = '';
     document.getElementById('inputWrap').style.display = 'block';
     restoreTouristCache();
-    // 不弹出加载遮罩、不自动提交表单
 }
 window.onload = function(){
     loadingMask.style.display = 'none';
@@ -235,7 +244,6 @@ window.onload = function(){
         inputWrap.style.display = 'none';
     }
 }
-// 仅点击【生成宝宝名字】才保存缓存并弹出加载弹窗
 document.getElementById('touristForm').addEventListener('submit', saveTouristCache);
 document.getElementById('touristForm').addEventListener('submit', function(){
     loadingMask.style.display = 'flex';
