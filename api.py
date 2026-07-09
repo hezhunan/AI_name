@@ -137,7 +137,6 @@ def reset_pwd():
 def user_update_info():
     data = request.get_json()
     user_id = data.get("user_id", 0)
-<<<<<<< HEAD
     if not user_id:
         return jsonify({"code": 400, "msg": "用户ID不能为空"})
     new_name = data.get("username", "").strip()
@@ -146,12 +145,6 @@ def user_update_info():
     if not new_name and not new_pwd:
         return jsonify({"code": 400, "msg": "请填写需要修改的内容"})
     # 调用db，按需更新
-=======
-    new_name = data.get("username", "").strip()
-    new_pwd = data.get("password", "").strip()
-    if not user_id or not new_name or not new_pwd:
-        return jsonify({"code": 400, "msg": "用户名、密码不能为空"})
->>>>>>> e119b7745a7aed8233f4fe446ad22e0426f0e519
     res = db.update_user_info(user_id, new_name, new_pwd)
     return jsonify({"code": 200 if res else 400, "msg": "修改成功" if res else "修改失败"})
 
