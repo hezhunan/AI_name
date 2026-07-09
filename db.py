@@ -194,6 +194,7 @@ def get_all_poems():
     return [r[0] for r in res]
 
 # 修改用户名、密码
+<<<<<<< HEAD
 # db.py 里的 update_user_info
 def update_user_info(user_id, username, password):
     conn = sqlite3.connect("db.db")
@@ -213,6 +214,20 @@ def update_user_info(user_id, username, password):
     affected = cur.rowcount
     conn.close()
     return affected > 0
+=======
+def update_user_info(uid, new_username, new_pwd):
+    conn = get_conn()
+    try:
+        conn.execute("UPDATE user SET username=?, password=? WHERE id=?", (new_username, new_pwd, uid))
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        print("修改用户信息失败：", e)
+        return False
+    finally:
+        conn.close()
+>>>>>>> e119b7745a7aed8233f4fe446ad22e0426f0e519
 
 # 注销账号：删除用户+全部收藏+全部起名记录+起名子记录
 def delete_user_all_related(uid):

@@ -236,6 +236,7 @@
         }
         .star-empty { color: #cccccc; }
         .star-fill { color: #ffcc00; }
+<<<<<<< HEAD
         /* 统一编辑弹窗通用样式 */
         .edit-modal-mask {
             display: none;
@@ -302,6 +303,8 @@
             font-size: 1rem;
             cursor: pointer;
         }
+=======
+>>>>>>> e119b7745a7aed8233f4fe446ad22e0426f0e519
     </style>
 </head>
 <body>
@@ -384,9 +387,13 @@
                 <div style="position:relative;display:inline-flex;align-items:center;">
                     <span class="back-text" id="settingBtn">设置</span>
                     <div id="settingDropdown" style="display:none;position:absolute;top:120%;right:0;background:#fff;border:1px solid #eee;box-shadow:0 2px 8px #00000015;border-radius:6px;min-width:120px;z-index:999;">
+<<<<<<< HEAD
                         <!-- 拆分两个编辑入口 -->
                         <div style="padding:10px 16px;cursor:pointer;" onclick="openEditNameModal()">修改用户名</div>
                         <div style="padding:10px 16px;cursor:pointer;" onclick="openEditPwdModal()">修改密码</div>
+=======
+                        <div style="padding:10px 16px;cursor:pointer;" onclick="openEditModal()">编辑信息</div>
+>>>>>>> e119b7745a7aed8233f4fe446ad22e0426f0e519
                         <div style="padding:10px 16px;cursor:pointer;" onclick="confirmDestroy()">注销账号</div>
                         <div style="padding:10px 16px;cursor:pointer;" onclick="logout()">退出登录</div>
                     </div>
@@ -409,6 +416,23 @@
         </div>
         <div class="footer">Powered by AI 起名引擎 · 传统文化起名系统</div>
     </div>
+    <!-- 修改用户信息弹窗 -->
+    <div id="editModalMask" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;">
+        <div style="width:min(92%,400px);background:#fff;padding:32px;border-radius:12px;">
+            <h2 style="text-align:center;margin-top:0;color:#222;">修改用户信息</h2>
+            <div id="pwdTipText" style="text-align:center;color:#c41e3a;font-weight:bold;margin:8px 0 12px;display:none;"></div>
+            <label style="display:block;margin:20px 0 6px;font-weight:bold;color:#333;">新用户名</label>
+            <input id="editUsername" type="text" style="width:100%;padding:12px 14px;border:1px solid #ddd;border-radius:8px;font-size:1rem;" placeholder="输入昵称">
+            <label style="display:block;margin:20px 0 6px;font-weight:bold;color:#333;">新密码</label>
+            <input id="editPwd" type="password" style="width:100%;padding:12px 14px;border:1px solid #ddd;border-radius:8px;font-size:1rem;" placeholder="输入新密码">
+            <label style="display:block;margin:20px 0 6px;font-weight:bold;color:#333;">确认新密码</label>
+            <input id="editPwdConfirm" type="password" style="width:100%;padding:12px 14px;border:1px solid #ddd;border-radius:8px;font-size:1rem;" placeholder="再次输入新密码">
+            <div style="display:flex;gap:14px;margin-top:28px;">
+                <button onclick="closeEditModal()" style="flex:1;padding:13px;border:none;border-radius:99px;background:#e8edf3;color:#222;font-size:1rem;cursor:pointer;">放弃修改</button>
+                <button onclick="submitEdit()" style="flex:1;padding:13px;border:none;border-radius:99px;background:#1958d8;color:#fff;font-size:1rem;cursor:pointer;">确认修改信息</button>
+            </div>
+        </div>
+    </div>
 <script>
 let editMode = false;
 let deleteTargetIdList = [];
@@ -419,6 +443,7 @@ const loginUid = localStorage.getItem("loginUid");
 let waitCancelSingleName = "";
 let savedNameList = [];
 let currentHistoryIndex = -1;
+<<<<<<< HEAD
 
 // 通用提示弹窗 1秒自动关闭
 function showTip(msg){
@@ -440,6 +465,29 @@ function closeCancelCollectModal(){
     document.getElementById("cancelCollectModal").style.display = "none";
 }
 
+=======
+
+// 通用提示弹窗 2秒自动关闭
+function showTip(msg){
+    document.getElementById("tipText").innerText = msg;
+    document.getElementById("tipModal").style.display = "flex";
+    setTimeout(()=>closeTip(), 2000);
+}
+function closeTip(){
+    document.getElementById("tipModal").style.display = "none";
+}
+
+// 取消单个收藏弹窗控制
+function openCancelCollectModal(name){
+    waitCancelSingleName = name;
+    document.getElementById("cancelCollectModal").style.display = "flex";
+}
+function closeCancelCollectModal(){
+    waitCancelSingleName = "";
+    document.getElementById("cancelCollectModal").style.display = "none";
+}
+
+>>>>>>> e119b7745a7aed8233f4fe446ad22e0426f0e519
 // 页面加载
 window.onload = async function () {
     const path = window.location.pathname;
@@ -536,7 +584,11 @@ async function executeDelete(){
     closeConfirmModal();
     toggleEditMode();
     await loadCollectData();
+<<<<<<< HEAD
     showTip("删除收藏成功！");
+=======
+    show("删除收藏成功！");
+>>>>>>> e119b7745a7aed8233f4fe446ad22e0426f0e519
 }
 async function loadHistoryData(){
     const res = await fetch("/api/search/list",{
@@ -712,7 +764,11 @@ async function confirmCancelSingleName(){
             if(currentHistoryIndex > -1){
                 await openHistoryDetail(currentHistoryIndex);
             }
+<<<<<<< HEAD
         },500);
+=======
+        },2000);
+>>>>>>> e119b7745a7aed8233f4fe446ad22e0426f0e519
     } catch (err) {
         showTip("取消收藏失败");
     }
@@ -756,6 +812,7 @@ document.addEventListener("click", (e) => {
         dropdown.style.display = "none";
     }
 });
+<<<<<<< HEAD
 
 // ========== 修改用户名弹窗逻辑：成功后刷新当前页面，不跳转登录 ==========
 function openEditNameModal(){
@@ -812,6 +869,29 @@ async function submitEditPwd() {
     if (!newPwd || !newPwdConfirm) {
         const tipDom = document.getElementById("pwdTipText");
         tipDom.innerText = "新密码、确认密码不能为空";
+=======
+// 修改信息弹窗
+function openEditModal(){
+    document.getElementById("pwdTipText").style.display = "none";
+    dropdown.style.display = "none";
+    document.getElementById("editModalMask").style.display = "flex";
+    document.getElementById("editUsername").value = "";
+    document.getElementById("editPwd").value = "";
+    document.getElementById("editPwdConfirm").value = "";
+}
+function closeEditModal() {
+    document.getElementById("editModalMask").style.display = "none";
+}
+async function submitEdit() {
+    document.getElementById("pwdTipText").style.display = "none";
+    const uid = parseInt(localStorage.getItem("loginUid"));
+    const newUser = document.getElementById("editUsername").value.trim();
+    const newPwd = document.getElementById("editPwd").value.trim();
+    const newPwdConfirm = document.getElementById("editPwdConfirm").value.trim();
+    if (!newUser || !newPwd || !newPwdConfirm) {
+        const tipDom = document.getElementById("pwdTipText");
+        tipDom.innerText = "昵称、新密码、确认密码不能为空";
+>>>>>>> e119b7745a7aed8233f4fe446ad22e0426f0e519
         tipDom.style.display = "block";
         return;
     }
@@ -824,15 +904,20 @@ async function submitEditPwd() {
     const res = await fetch("/api/user/update_info", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
+<<<<<<< HEAD
         body: JSON.stringify({
             user_id: uid,
             password: newPwd
         })
+=======
+        body: JSON.stringify({user_id: uid, username: newUser, password: newPwd})
+>>>>>>> e119b7745a7aed8233f4fe446ad22e0426f0e519
     });
     const data = await res.json();
     document.getElementById("tipText").innerText = data.msg;
     document.getElementById("tipModal").style.display = "flex";
     if (data.code === 200) {
+<<<<<<< HEAD
         closePwdEditModal();
         // 修改密码成功：清空本地登录缓存，跳转登录页面
         setTimeout(()=>{
@@ -844,6 +929,12 @@ async function submitEditPwd() {
     }
 }
 
+=======
+        closeEditModal();
+        setTimeout(()=>location.reload(),1200);
+    }
+}
+>>>>>>> e119b7745a7aed8233f4fe446ad22e0426f0e519
 // 注销账号
 function confirmDestroy() {
     dropdown.style.display = "none";
@@ -878,7 +969,11 @@ async function destroyAccount() {
         setTimeout(()=>{
             closeTip();
             location.href = "/login";
+<<<<<<< HEAD
         }, 1000);
+=======
+        }, 2000);
+>>>>>>> e119b7745a7aed8233f4fe446ad22e0426f0e519
     }
 }
 </script>
