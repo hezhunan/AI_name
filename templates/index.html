@@ -336,6 +336,22 @@ function showTipModal(msg) {
     }, 1000);
 }
 
+// ===================== 新增：汉字校验函数 =====================
+/**
+ * 校验输入内容是否仅包含汉字、英文逗号、中文逗号、“无”
+ * 包含数字/字母/符号则返回false
+ */
+function checkChineseOnly(inputStr) {
+    if (!inputStr || inputStr.trim() === '' || inputStr.trim() === '无') {
+        return true;
+    }
+    // 允许字符：汉字、，、,
+    const reg = /^[\u4e00-\u9fa5，,]+$/;
+    const text = inputStr.trim();
+    return reg.test(text);
+}
+// ==========================================================
+
 // 取消收藏弹窗控制
 function openCancelConfirm(name) {
     waitCancelName = name;
@@ -515,7 +531,27 @@ window.onload = async function () {
         inputWrap.style.display = 'none';
     }
 }
-document.getElementById('nameForm').addEventListener('submit', function(){
+
+// ===================== 修改表单提交事件，增加校验拦截 =====================
+document.getElementById('nameForm').addEventListener('submit', function(e){
+    // 获取两个输入框值
+    const needVal = document.getElementById('need_words').value;
+    const avoidVal = document.getElementById('avoid_words').value;
+
+    // 校验指定用字
+    if (!checkChineseOnly(needVal)) {
+        e.preventDefault(); // 阻止表单提交
+        showTipModal("存在非法字符");
+        return;
+    }
+    // 校验避讳字
+    if (!checkChineseOnly(avoidVal)) {
+        e.preventDefault();
+        showTipModal("存在非法字符");
+        return;
+    }
+
+    // 校验通过，执行原有逻辑
     saveFormCache();
     loadingMask.style.display = 'flex';
 })
