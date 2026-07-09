@@ -36,7 +36,7 @@
             cursor:pointer;
         }
         .grid { display: grid; gap: 40px; margin-bottom: 24px;}
-        .card { background: rgba(255, 255, 255, 0.92); border: 1px solid rgba(15, 23, 42, 0.08); box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08); padding: 28px }
+        .card { background: white; border: 1px solid rgba(15, 23, 42, 0.08); box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08); padding: 28px }
         .card h2 { margin-top: 0; color: #0f4a8a; }
         label { display: block; margin: 18px 0 8px; font-weight: 700; color: #334155; }
         input, select { width: 100%; padding: 14px 16px; border: 1px solid #cbd5e1; border-radius: 14px; background: #f8fafc; font-size: 1rem; color: #0f172a; }
@@ -57,10 +57,7 @@
             color:#94a3b8;
             font-size:0.9rem;
         }
-        .restart-btn-wrap {
-            text-align: center;
-            margin-top: 30px;
-        }
+        .restart-btn-wrap { text-align: center; margin-top: 30px; }
         .loading-mask {
             position: fixed;
             inset: 0;
@@ -71,7 +68,7 @@
             background: transparent;
         }
         .loading-box {
-            background: rgba(255,255,255,0.85);
+            background: white;
             padding: 24px 40px;
             border-radius: 12px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.15);
@@ -155,28 +152,37 @@
         </section>
 
         <div id="resultContainer">
-            {% if result %}
+            {% if result and bazi and bazi.year %}
             <section class="grid">
                 <div class="card">
                     <h2>八字详细分析</h2>
                     <div class="meta">姓氏：{{ result.input.surname }} · 性别：{{ '男' if result.input.gender == 'male' else '女' }} · 出生：{{ result.input.birth }}</div>
                     <div class="info-grid">
-                        <div class="tag">年柱：{{ result.bazi.year }}</div>
-                        <div class="tag">月柱：{{ result.bazi.month }}</div>
-                        <div class="tag">日柱：{{ result.bazi.day }}</div>
-                        <div class="tag">时柱：{{ result.bazi.hour }}</div>
+                        <div class="tag">年柱：{{ bazi.year }}</div>
+                        <div class="tag">月柱：{{ bazi.month }}</div>
+                        <div class="tag">日柱：{{ bazi.day }}</div>
+                        <div class="tag">时柱：{{ bazi.hour }}</div>
                     </div>
-                    <div class="meta">生肖：{{ result.bazi.zodiac }} · 五行：{{ result.bazi.birth_element }} · 时辰：{{ result.time_period }}</div>
-                    <div class="meta">八字全局分析：{{ result.bazi.balance }}</div>
+                    {% set word_need = bazi.need_words if (bazi.need_words is defined and bazi.need_words.strip() != '') else '无' %}
+                    {% set word_avoid = bazi.avoid_words if (bazi.avoid_words is defined and bazi.avoid_words.strip() != '') else '无' %}
+                    {% set style_type = bazi.style_prefer if (bazi.style_prefer is defined and bazi.style_prefer.strip() != '') else '简约' %}
+                    <div class="meta" style="margin-top:12px;">
+                        指定用字：{{ word_need }} · 避讳字：{{ word_avoid }} · 风格偏好：{{ style_type }}
+                    </div>
+                    <div class="meta">生肖：{{ bazi.zodiac }} · 五行：{{ bazi.birth_element }} · 时辰：{{ result.time_period }}</div>
+                    <div class="meta">八字全局分析：{{ bazi.balance }}</div>
                     <div>
                         <ul class="list">
-                            {% for item in result.bazi.full_analysis %}
+                            {% for item in bazi.full_analysis %}
                                 <li>{{ item }}</li>
                             {% endfor %}
                         </ul>
                     </div>
                 </div>
             </section>
+
+            {# 【新增缺失的名字渲染区块】#}
+            {% if result.suggestions and result.suggestions | length > 0 %}
             <section class="grid">
                 <div class="card">
                     <h2>推荐名字</h2>
@@ -195,6 +201,7 @@
                     </div>
                 </div>
             </section>
+            {% endif %}
             {% endif %}
         </div>
 
@@ -219,7 +226,7 @@ function restoreTouristCache() {
     const cacheStr = localStorage.getItem(TOURIST_CACHE_KEY);
     if (!cacheStr) return;
     try {
-        const cache = JSON.parse(cacheStr);
+        const cache = JSON.parse(cache);
         document.getElementById('surname').value = cache.surname || '';
         document.getElementById('gender').value = cache.gender || 'male';
         document.getElementById('birth').value = cache.birth || '';

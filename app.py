@@ -100,10 +100,10 @@ def get_full_birth_pillar(dt: datetime):
     d = dt.day
     h = dt.hour
     year_zhu = get_year_gz(y)
-    # 修复：补齐第三个参数 d
     month_zhu = get_month_gz(y, m, d)
     day_zhu = get_day_gz(y, m, d)
-    shi_zhu, shi_zhi = get_shichen_gz(y, m, h)
+    # 修复：补齐第四个参数 h
+    shi_zhu, shi_zhi = get_shichen_gz(y, m, d, h)
     zodiac = ZODIAC_MAP[year_zhu[1]]
     hour_text = f"{h}时"
     return {
@@ -347,12 +347,16 @@ def index_page():
                 }
     return render_template("index.html", result=result, error=error, db_bazi=db_bazi)
 
-# 游客页面【同步新增三个参数】
+# 游客页面【修复：修正变量笔误、多层兜底】
 @app.route("/tourist", methods=["GET", "POST"])
 def tourist_page():
     result = None
     error = None
-    render_bazi = {}
+    render_bazi = {
+        "year": "", "month": "", "day": "", "hour": "", "zodiac": "",
+        "birth_element": "", "balance": "", "full_analysis": [],
+        "need_words": "无", "avoid_words": "无", "style_prefer": "简约"
+    }
     need_words = "无"
     avoid_words = "无"
     style_prefer = "简约"
@@ -366,29 +370,38 @@ def tourist_page():
         if not sur or not birth_str:
             error = "姓氏与出生时间不能为空"
         else:
-            birth_dt = datetime.strptime(birth_str, "%Y-%m-%dT%H:%M")
-            pillar = get_full_birth_pillar(birth_dt)
-            # 传入三个偏好参数
-            ai_res = glm_analysis_name(sur, gender, pillar, need_words, avoid_words, style_prefer)
-            render_bazi = {
-                "year": ai_res["year"],
-                "month": ai_res["month"],
-                "day": ai_res["day"],
-                "hour": ai_res["hour"],
-                "zodiac": pillar["zodiac"],
-                "birth_element": ai_res["birth_element"],
-                "balance": ai_res["balance"],
-                "full_analysis": ai_res["full_analysis"],
-                "need_words": need_words,
-                "avoid_words": avoid_words,
-                "style_prefer": style_prefer
-            }
-            result = {
-                "input": {"surname": sur, "gender": gender, "birth": birth_str},
-                "bazi": render_bazi,
-                "time_period": pillar["time_period"],
-                "suggestions": ai_res["suggestions"]
-            }
+            try:
+                birth_dt = datetime.strptime(birth_str, "%Y-%m-%dT%H:%M")
+                pillar = get_full_birth_pillar(birth_dt)
+                ai_res = glm_analysis_name(sur, gender, pillar, need_words, avoid_words, style_prefer)
+                # 修复变量笔误，兜底为空列表
+                suggest_list = ai_res.get("suggestions", [])
+                # 如果AI返回名字为空，强制生成备用名字
+                if not suggest_list or len(suggest_list) == 0:
+                    fallback_wuxing = ai_res.get("birth_element", "土")
+                    suggest_list = local_fallback_name(sur, fallback_wuxing)
+                render_bazi = {
+                    "year": ai_res.get("year", ""),
+                    "month": ai_res.get("month", ""),
+                    "day": ai_res.get("day", ""),
+                    "hour": ai_res.get("hour", ""),
+                    "zodiac": pillar.get("zodiac", ""),
+                    "birth_element": ai_res.get("birth_element", "土"),
+                    "balance": ai_res.get("balance", "暂无八字分析"),
+                    "full_analysis": ai_res.get("full_analysis", []),
+                    "need_words": need_words,
+                    "avoid_words": avoid_words,
+                    "style_prefer": style_prefer
+                }
+                result = {
+                    "input": {"surname": sur, "gender": gender, "birth": birth_str},
+                    "bazi": render_bazi,
+                    "time_period": pillar.get("time_period", ""),
+                    "suggestions": suggest_list
+                }
+            except Exception as e:
+                traceback.print_exc()
+                error = "生成失败，请重新提交"
     return render_template("tourist.html", result=result, error=error, bazi=render_bazi)
 
 @app.route("/user")

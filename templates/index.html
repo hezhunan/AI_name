@@ -232,11 +232,13 @@
                     <input type="hidden" name="front_login_uid" id="hiddenLoginUid">
                     <label for="surname">姓氏（支持复姓，例如：欧阳、司马）</label>
                     <input id="surname" name="surname" type="text" maxlength="2" placeholder="李 或 欧阳" value="{{ request.form.surname or '' }}" required>
+
                     <label for="gender">性别</label>
                     <select id="gender" name="gender">
                         <option value="male" {% if request.form.gender == 'male' %}selected{% endif %}>男</option>
                         <option value="female" {% if request.form.gender == 'female' %}selected{% endif %}>女</option>
                     </select>
+
                     <label for="need_words">指定用字（多个用逗号分隔，无需请填无）</label>
                     <input id="need_words" name="need_words" type="text" placeholder="如：泽、涵，无则填写无" value="{{ request.form.need_words or '' }}">
 
@@ -249,8 +251,10 @@
                         <option value="大气" {% if request.form.style_prefer == '大气' %}selected{% endif %}>大气开阔</option>
                         <option value="简约" {% if request.form.style_prefer == '简约' or not request.form.style_prefer %}selected{% endif %}>简约干净</option>
                     </select>
+
                     <label for="birth">出生日期和时间</label>
                     <input id="birth" name="birth" type="datetime-local" value="{{ request.form.birth or '' }}" required>
+
                     <button type="submit">生成宝宝名字</button>
                 </form>
             </div>
@@ -266,12 +270,11 @@
                         <div class="tag">月柱：{{ show_bazi.month }}</div>
                         <div class="tag">日柱：{{ show_bazi.day }}</div>
                         <div class="tag">时柱：{{ show_bazi.hour }}</div>
-                        <strong>指定用字：</strong>{{ db_bazi.need_words if db_bazi.need_words else "无" }}
-                        &nbsp;&nbsp;
-                        <strong>避讳字：</strong>{{ db_bazi.avoid_words if db_bazi.avoid_words else "无" }}
-                        &nbsp;&nbsp;
-                        <strong>风格偏好：</strong>{{ db_bazi.style_prefer if db_bazi.style_prefer else "简约" }}
                     </div>
+                    {% set word_need = show_bazi.need_words if (show_bazi.need_words is defined and show_bazi.need_words.strip() != '') else '无' %}
+                    {% set word_avoid = show_bazi.avoid_words if (show_bazi.avoid_words is defined and show_bazi.avoid_words.strip() != '') else '无' %}
+                    {% set style_type = show_bazi.style_prefer if (show_bazi.style_prefer is defined and show_bazi.style_prefer.strip() != '') else '简约' %}
+                    <div class="meta" style="margin-top:12px;">指定用字：{{ word_need }} · 避讳字：{{ word_avoid }} · 风格偏好：{{ style_type }}</div>
                     <div class="meta">生肖：{{ show_bazi.zodiac }} · 五行：{{ show_bazi.birth_element }} · 时辰：{{ result.time_period }}</div>
                     <div class="meta">八字全局分析：{{ show_bazi.balance }}</div>
                     <div>

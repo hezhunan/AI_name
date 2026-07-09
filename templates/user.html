@@ -603,8 +603,17 @@ async function openHistoryDetail(index){
             <span class="tag">日柱：${d.day}</span>
             <span class="tag">时柱：${d.hour}</span>
         </div>
-        <div class="meta"><strong>喜用神五行：</strong>${d.birth_element}</div>
-        <div class="meta"><strong>八字全局分析：</strong>${d.balance}</div>
+        <div class="meta">
+            指定用字：${d.need_words || "无"} · 
+            避讳字：${d.avoid_words || "无"} · 
+            风格偏好：${d.style_prefer || "简约"}
+        </div>
+        <div class="meta">
+            生肖：${d.zodiac} · 
+            五行：${d.birth_element} · 
+            时辰：${d.time_period}
+        </div>
+        <div class="meta">八字全局分析：${d.balance}</div>
         <ul class="list" style="margin:12px 0 20px;">`;
         fullAnalysisList.forEach(line=>html += `<li>${line}</li>`)
         html += `</ul><h3 style="color:#0f4a8a;margin-bottom:12px;">推荐名字</h3>`;
