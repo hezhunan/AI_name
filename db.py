@@ -148,7 +148,9 @@ def get_full_search_by_record_id(record_id, user_id):
     return main_data
 
 # ==================== 收藏模块 ====================
-def add_collect(user_id, name, meaning, five_attr, record_id):
+# 原：def add_collect(user_id, name, meaning, five_attr, record_id):
+# 修改为增加wuge参数
+def add_collect(user_id, name, meaning, five_attr, record_id, wuge_info=None):
     conn = get_conn()
     exist = conn.execute(
         "SELECT id FROM collect_name WHERE user_id = ? AND full_name = ?",
@@ -157,19 +159,28 @@ def add_collect(user_id, name, meaning, five_attr, record_id):
     if exist:
         conn.close()
         return False
+    wuge_str = json.dumps(wuge_info, ensure_ascii=False) if wuge_info is not None else None
     conn.execute("""
-        INSERT INTO collect_name(user_id, full_name, meaning, five_attr, record_id)
-        VALUES (?,?,?,?,?)
-    """, (user_id, name, meaning, five_attr, record_id))
+        INSERT INTO collect_name(user_id, full_name, meaning, five_attr, record_id, wuge_info)
+        VALUES (?,?,?,?,?,?)
+    """, (user_id, name, meaning, five_attr, record_id, wuge_str))
     conn.commit()
     conn.close()
     return True
 
 def get_user_collect_list(user_id):
     conn = get_conn()
-    res = conn.execute("SELECT * FROM collect_name WHERE user_id = ?", (user_id,)).fetchall()
+    res = conn.execute("SELECT id, full_name, meaning, five_attr, wuge_info FROM collect_name WHERE user_id = ?", (user_id,)).fetchall()
+    arr = []
+    for i in res:
+        d = dict(i)
+        if d["wuge_info"]:
+            d["wuge_info"] = json.loads(d["wuge_info"])
+        else:
+            d["wuge_info"] = None
+        arr.append(d)
     conn.close()
-    return [dict(i) for i in res]
+    return arr
 
 def batch_del_collect(user_id, del_ids):
     conn = get_conn()

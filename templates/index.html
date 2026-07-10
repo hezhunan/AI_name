@@ -1,4 +1,4 @@
-{% set show_bazi = result.bazi if (result is defined and result.bazi is defined and 'year' in result.bazi) else (bazi if (bazi is defined and 'year' in bazi) else {}) %}
+{% set show_bazi = result.bazi if (result.bazi is defined and 'year' in result.bazi) else (bazi if (bazi is defined and 'year' in bazi) else {}) %}
 <!doctype html>
 <html lang="zh-CN">
 <head>
@@ -84,7 +84,7 @@
         .loading-box {
             background: rgba(255,255,255,0.85);
             padding: 24px 40px;
-            border-radius: 12px;
+            border-radius: 12;
             box-shadow: 0 8px 32px rgba(0,0,0,0.15);
             width: auto;
             height: auto;
@@ -166,6 +166,36 @@
             background: #2c7be5;
             color: #fff;
             font-size: 1rem;
+        }
+        /* 五格通用样式统一 */
+                .wuge-panel {
+            margin-top:10px;
+            padding:10px 12px;
+            background:#f0f7ff;
+            border-radius:10px;
+            min-width: 420px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .wuge-title {
+            margin:0 0 6px 0;
+            font-weight:600;
+            color:#0f4a8a;
+        }
+        .wuge-row {
+            display:flex;
+            gap:4px;
+            margin-bottom:8px;
+            font-size:0.9rem;
+            justify-content:flex-start;
+            flex-wrap:wrap;
+        }
+        .wuge-comment {
+            margin:0;
+            font-size:0.88rem;
+            color:#475569;
+            word-break: break-all;
+            line-height: 1.5;
         }
         @media (max-width: 860px) {
             .hero .card { flex-direction: column; gap: 20px; text-align: center; }
@@ -298,22 +328,25 @@
                         <div class="suggestion" data-name="{{ item.name }}">
                             <h3>
                                 {{ item.name }}
-                                <span class="star-btn star-empty" data-target="{{ item.name }}">☆</span>
+                                <!-- 关键：绑定完整五格JSON到data-wuge -->
+                                <span class="star-btn star-empty" 
+                                      data-target="{{ item.name }}"
+                                      data-wuge='{{ item.wuge_info | tojson | replace("'","\\'") }}'>☆</span>
                             </h3>
                             <p>{{ item.meaning }}</p>
                             <p class="meta"><strong>影响因素：</strong>{{ item.source_tags | join('，') }}</p>
                             {% set wuge = item.wuge_info if (item.wuge_info is defined and item.wuge_info) else {} %}
                             {% if wuge %}
-                            <div style="margin-top:10px; padding:10px 12px; background:#f0f7ff; border-radius:10px;">
-                                <p style="margin:0 0 6px 0; font-weight:600; color:#0f4a8a;">三才五格民俗参考</p>
-                                <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:6px; margin-bottom:8px; font-size:0.9rem;">
+                            <div class="wuge-panel">
+                                <p class="wuge-title">三才五格民俗参考</p>
+                                <div class="wuge-row">
                                     <span>天格{{ wuge.get('tian', '') }}</span>
                                     <span>人格{{ wuge.get('ren', '') }}</span>
                                     <span>地格{{ wuge.get('di', '') }}</span>
                                     <span>总格{{ wuge.get('zong', '') }}</span>
                                     <span>外格{{ wuge.get('wai', '') }}</span>
                                 </div>
-                                <p style="margin:0; font-size:0.88rem; color:#475569;">{{ wuge.get('comment', '暂无五格解析') }}</p>
+                                <p class="wuge-comment">{{ wuge.get('comment', '暂无五格解析') }}</p>
                             </div>
                             {% endif %}
                         </div>
@@ -451,7 +484,8 @@ function autoRegen() {
     restoreFormCache();
 }
 
-async function toggleStar(name) {
+// 核心收藏函数：接收wugeObj并上传后端
+async function toggleStar(name, wugeObj) {
     console.log("触发星星点击，名字：", name);
     const loginUid = localStorage.getItem("loginUid");
     if (!loginUid) {
@@ -486,7 +520,8 @@ async function toggleStar(name) {
                     full_name: name,
                     meaning: meaningText,
                     five_attr: globalFiveAttr,
-                    record_id: globalRecordId
+                    record_id: globalRecordId,
+                    wuge_info: wugeObj // 上传完整五格数据入库
                 })
             })
             await res.json();
@@ -499,11 +534,19 @@ async function toggleStar(name) {
     }
 }
 
+// 星星点击事件：解析data-wuge传给toggleStar
 document.addEventListener("click", function(e) {
     const targetStar = e.target.closest(".star-btn");
     if (targetStar) {
+        e.stopPropagation();
         const targetName = targetStar.dataset.target;
-        toggleStar(targetName);
+        let wugeData = null;
+        try {
+            wugeData = JSON.parse(targetStar.dataset.wuge || "null");
+        } catch (parseErr) {
+            wugeData = null;
+        }
+        toggleStar(targetName, wugeData);
     }
 });
 
@@ -527,7 +570,6 @@ async function refreshStarState() {
             } else {
                 star.innerText = "☆";
                 star.classList.remove('star-fill');
-                star.classList.add('star-empty');
             }
         })
     } catch (err) {
@@ -557,7 +599,7 @@ document.getElementById('nameForm').addEventListener('submit', function(e){
 
     // 校验指定用字
     if (!checkChineseOnly(needVal)) {
-        e.preventDefault(); // 阻止表单提交
+        e.preventDefault();
         showTipModal("存在非法字符");
         return;
     }

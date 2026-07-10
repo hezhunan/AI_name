@@ -36,7 +36,7 @@
             cursor:pointer;
         }
         .grid { display: grid; gap: 40px; margin-bottom: 24px;}
-        .card { background: white; border: 1px solid rgba(15, 23, 42, 0.08); box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08); padding: 28px }
+        .card { background: rgba(255, 255, 255, 0.92); border: 1px solid rgba(15, 23, 42, 0.08); box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08); padding: 28px }
         .card h2 { margin-top: 0; color: #0f4a8a; }
         label { display: block; margin: 18px 0 8px; font-weight: 700; color: #334155; }
         input, select { width: 100%; padding: 14px 16px; border: 1px solid #cbd5e1; border-radius: 14px; background: #f8fafc; font-size: 1rem; color: #0f172a; }
@@ -68,7 +68,7 @@
             background: transparent;
         }
         .loading-box {
-            background: white;
+            background: rgba(255,255,255,0.85);
             padding: 24px 40px;
             border-radius: 12px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.15);
@@ -111,9 +111,11 @@
                 <h2>起名说明</h2>
                 <ul class="list">
                     <li>支持复姓输入，自动处理两个汉字姓氏。</li>
-                    <li>结合出生时间与八字年、月、日、时柱形成详细分析。</li>
+                    <li>结合出生时间与八字年、月、时柱形成详细分析。</li>
                     <li>优选符合宝宝性别气质和五行平衡的名字。</li>
                     <li>界面更清晰，呈现分析结果与推荐理由。</li>
+                    <li>以八字四柱旺衰、喜用神五行、生肖宜忌为核心判断依据</li>
+                    <li>三才五格属于近代民间数理民俗，仅作辅助参考</li>
                 </ul>
             </div>
         </section>
@@ -181,18 +183,33 @@
                 </div>
             </section>
 
-            {# 【新增缺失的名字渲染区块】#}
             {% if result.suggestions and result.suggestions | length > 0 %}
             <section class="grid">
                 <div class="card">
                     <h2>推荐名字</h2>
                     <div class="meta">系统综合八字、时辰与五行，为宝宝精选吉祥名字。</div>
+                    <div class="meta">以下为系统根据输入生成的候选名字，以及每个候选被哪些因素影响。</div>
                     <div id="nameListBox">
                     {% for item in result.suggestions %}
                     <div class="suggestion" data-name="{{ item.name }}">
                         <h3>{{ item.name }} <span class="collect-disabled">游客不可收藏</span></h3>
                         <p>{{ item.meaning }}</p>
                         <p class="meta"><strong>影响因素：</strong>{{ item.source_tags | join('，') }}</p>
+                        {# 新增五格展示区块，与index.html完全一致 #}
+                        {% set wuge = item.wuge_info if (item.wuge_info is defined and item.wuge_info) else {} %}
+                        {% if wuge %}
+                        <div style="margin-top:10px; padding:10px 12px; background:#f0f7ff; border-radius:10px;">
+                            <p style="margin:0 0 6px 0; font-weight:600; color:#0f4a8a;">三才五格民俗参考</p>
+                            <div style="display:flex; gap:20px; margin-bottom:8px; font-size:1rem; justify-content:flex-start; flex-wrap:wrap;">
+                                <span>天格{{ wuge.get('tian', '') }}</span>
+                                <span>人格{{ wuge.get('ren', '') }}</span>
+                                <span>地格{{ wuge.get('di', '') }}</span>
+                                <span>总格{{ wuge.get('zong', '') }}</span>
+                                <span>外格{{ wuge.get('wai', '') }}</span>
+                            </div>
+                            <p style="margin:0; font-size:0.88rem; color:#475569;">{{ wuge.get('comment', '暂无五格解析') }}</p>
+                        </div>
+                        {% endif %}
                     </div>
                     {% endfor %}
                     </div>

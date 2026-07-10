@@ -50,7 +50,7 @@ def register():
 @api_bp.route("/collect/add", methods=["POST"])
 def collect_add():
     d = request.get_json()
-    ok = db.add_collect(d["user_id"], d["full_name"], d["meaning"], d["five_attr"], d["record_id"])
+    ok = db.add_collect(d["user_id"], d["full_name"], d["meaning"], d["five_attr"], d["record_id"], d['wuge_info'])
     return jsonify({"code":200 if ok else 400, "msg":"收藏成功" if ok else "已收藏"})
 
 # 获取收藏列表

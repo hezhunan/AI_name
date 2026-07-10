@@ -233,6 +233,36 @@
         }
         .star-empty { color: #cccccc; }
         .star-fill { color: #ffcc00; }
+        /* 统一五格面板样式 */
+        .wuge-panel {
+            margin-top:10px;
+            padding:10px 12px;
+            background:#f0f7ff;
+            border-radius:10px;
+            min-width: 420px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .wuge-title {
+            margin:0 0 6px 0;
+            font-weight:600;
+            color:#0f4a8a;
+        }
+        .wuge-row {
+            display:flex;
+            gap:4px;
+            margin-bottom:8px;
+            font-size:0.9rem;
+            justify-content:flex-start;
+            flex-wrap:wrap;
+        }
+        .wuge-comment {
+            margin:0;
+            font-size:0.88rem;
+            color:#475569;
+            word-break: break-all;
+            line-height: 1.5;
+        }
         /* 统一编辑弹窗通用样式 */
         .edit-modal-mask {
             display: none;
@@ -494,6 +524,23 @@ function renderCollectList(){
     editBtn.style.display="block";
     let html = "";
     allCollectData.forEach(item=>{
+        // 读取收藏中wuge_info，兼容后端后续存储五格数据
+        let wugeHtml = "";
+        if(item.wuge_info){
+            const w = item.wuge_info;
+            wugeHtml = `
+            <div class="wuge-panel">
+                <p class="wuge-title">三才五格民俗参考</p>
+                <div class="wuge-row">
+                    <span>天格${w.tian || ''}</span>
+                    <span>人格${w.ren || ''}</span>
+                    <span>地格${w.di || ''}</span>
+                    <span>总格${w.zong || ''}</span>
+                    <span>外格${w.wai || ''}</span>
+                </div>
+                <p class="wuge-comment">${w.comment || '暂无五格解析'}</p>
+            </div>`;
+        }
         html += `<li style="flex-direction:column;align-items:flex-start;gap:8px;">
         <div style="display:flex;align-items:center;gap:12px;">
             <input class="item-checkbox" data-id="${item.id}" type="checkbox">
@@ -502,6 +549,7 @@ function renderCollectList(){
         <div style="color:#475569;line-height:1.6;">
             释义：${item.meaning}
         </div>
+        ${wugeHtml}
         </li>`
     })
     wrap.innerHTML=html;
@@ -626,6 +674,23 @@ async function openHistoryDetail(index){
                 const nameMean = nameItem.meaning || "暂无释义";
                 const starIcon = collectNameSet.has(nameItem.name) ? "★" : "☆";
                 const starClass = collectNameSet.has(nameItem.name) ? "star-fill" : "star-empty";
+                let wugeBlock = "";
+                if(nameItem.wuge_info){
+                    const w = nameItem.wuge_info;
+                    wugeBlock = `
+                    <div class="wuge-panel">
+                        <p class="wuge-title">三才五格民俗参考</p>
+                        <div class="wuge-row">
+                            <span>天格${w.tian || ''}</span>
+                            <span>人格${w.ren || ''}</span>
+                            <span>地格${w.di || ''}</span>
+                            <span>总格${w.zong || ''}</span>
+                            <span>外格${w.wai || ''}</span>
+                        </div>
+                        <p class="wuge-comment">${w.comment || '暂无五格解析'}</p>
+                    </div>`;
+                }
+                // 新增data-wuge存储五格JSON
                 html += `<div class="suggestion" data-name="${nameItem.name}">
                     <h3>
                         ${nameItem.name}
@@ -635,10 +700,12 @@ async function openHistoryDetail(index){
                             data-record-id="${record.id}"
                             data-five="${d.birth_element}"
                             data-mean="${nameMean.replace(/'/g,"\\'")}"
+                            data-wuge='${JSON.stringify(nameItem.wuge_info).replace(/'/g,"\\'")}'
                         >${starIcon}</span>
                     </h3>
                     <p>${nameMean}</p>
                     <p class="meta">影响标签：${tags.join("，")}</p>
+                    ${wugeBlock}
                 </div>`
             })
         }
@@ -654,7 +721,7 @@ async function openHistoryDetail(index){
 function closeHistoryModal(){
     document.getElementById("historyDetailModal").style.display="none";
 }
-// 星星点击监听 阻止冒泡
+// 星星点击监听 阻止冒泡（新增解析wuge）
 document.addEventListener("click", function(e) {
     const targetStar = e.target.closest(".star-btn");
     if (!targetStar) return;
@@ -663,10 +730,15 @@ document.addEventListener("click", function(e) {
     const recordId = parseInt(targetStar.dataset.recordId);
     const fiveAttr = targetStar.dataset.five;
     const meanText = targetStar.dataset.mean;
-    toggleSingleStar(targetName, recordId, fiveAttr, meanText);
+    // 解析五格数据
+    let wugeData = null;
+    try{
+        wugeData = JSON.parse(targetStar.dataset.wuge || "null");
+    }catch(err){}
+    toggleSingleStar(targetName, recordId, fiveAttr, meanText, wugeData);
 });
-// 收藏/取消核心逻辑
-async function toggleSingleStar(name, recordId, fiveAttr, mean){
+// 收藏/取消核心逻辑 新增wugeJson参数上传后端
+async function toggleSingleStar(name, recordId, fiveAttr, mean, wugeJson){
     const uid = parseInt(loginUid);
     if (!uid) {
         showTip("请先登录");
@@ -674,7 +746,7 @@ async function toggleSingleStar(name, recordId, fiveAttr, mean){
     }
     const isCollected = savedNameList.includes(name);
     if (!isCollected) {
-        // 新增收藏
+        // 新增收藏，携带五格传给后端
         try {
             const res = await fetch("/api/collect/add", {
                 method: "POST",
@@ -684,7 +756,8 @@ async function toggleSingleStar(name, recordId, fiveAttr, mean){
                     full_name: name,
                     meaning: mean,
                     five_attr: fiveAttr,
-                    record_id: recordId
+                    record_id: recordId,
+                    wuge_info: wugeJson
                 })
             })
             await res.json();
@@ -692,6 +765,7 @@ async function toggleSingleStar(name, recordId, fiveAttr, mean){
             await refreshAllStar();
             showTip("收藏成功");
         } catch (err) {
+            console.error("收藏报错：", err);
             showTip("收藏失败，请重试");
         }
     } else {
@@ -744,7 +818,6 @@ async function refreshAllStar(){
             } else {
                 star.innerText = "☆";
                 star.classList.remove('star-fill');
-                star.classList.add('star-empty');
             }
         })
     } catch (err) {
@@ -795,12 +868,12 @@ async function submitEditName() {
     document.getElementById("tipModal").style.display = "flex";
     if (data.code === 200) {
         closeNameEditModal();
-        // 仅刷新当前个人中心页面，不退出登录
+        // 仅刷新当前页面，不退出登录
         setTimeout(()=>location.reload(),1000);
     }
 }
 
-// ========== 修改密码弹窗逻辑：成功后清空本地登录信息，跳转登录页 ==========
+// ========== 修改密码弹窗逻辑：成功后清空本地登录信息，跳转登录 ==========
 function openEditPwdModal(){
     dropdown.style.display = "none";
     document.getElementById("pwdTipText").style.display = "none";
@@ -840,7 +913,7 @@ async function submitEditPwd() {
     document.getElementById("tipModal").style.display = "flex";
     if (data.code === 200) {
         closePwdEditModal();
-        // 修改密码成功：清空本地登录缓存，跳转登录页面
+        // 修改密码成功清空登录跳转
         setTimeout(()=>{
             localStorage.clear();
             document.cookie = "loginUid=;expires=0;path=/";

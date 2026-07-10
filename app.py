@@ -138,7 +138,7 @@ def local_fallback_name(surname, target_five):
             "di": random.randint(10,26),
             "zong": random.randint(15,32),
             "wai": random.randint(5,14),
-            "comment": wuge_comments[i] + "（三才五格为近代民俗数理参考，传统命理以八字为主）"
+            "comment": wuge_comments[i]
         }
         res.append({
             "name": full,
@@ -194,7 +194,7 @@ JSON固定结构：
                 "di": "地格数字",
                 "zong": "总格数字",
                 "wai": "外格数字",
-                "comment": "五格综合简评（说明：三才五格为近代民俗数理，仅作参考，传统命理以八字五行为核心）"
+                "comment": "五格综合简评"
             }
         }
     ]
