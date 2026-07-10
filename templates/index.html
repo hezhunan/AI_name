@@ -219,6 +219,8 @@
                     <li>结合出生时间与八字年、月、时柱形成详细分析。</li>
                     <li>优选符合宝宝性别气质和五行平衡的名字。</li>
                     <li>界面更清晰，呈现分析结果与推荐理由。</li>
+                    <li>以八字四柱旺衰、喜用神五行、生肖宜忌为核心判断依据</li>
+                    <li>三才五格属于近代民间数理民俗，仅作辅助参考</li>
                 </ul>
             </div>
         </section>
@@ -292,17 +294,32 @@
                     <div class="meta">系统综合八字、时辰与五行，为宝宝精选吉祥名字。</div>
                     <div class="meta">以下为系统根据输入生成的候选名字，以及每个候选被哪些因素影响。</div>
                     <div id="nameListBox">
-                    {% for item in result.suggestions %}
-                    <div class="suggestion" data-name="{{ item.name }}">
-                        <h3>
-                            {{ item.name }}
-                            <span class="star-btn star-empty" data-target="{{ item.name }}">☆</span>
-                        </h3>
-                        <p>{{ item.meaning }}</p>
-                        <p class="meta"><strong>影响因素：</strong>{{ item.source_tags | join('，') }}</p>
+                        {% for item in result.suggestions %}
+                        <div class="suggestion" data-name="{{ item.name }}">
+                            <h3>
+                                {{ item.name }}
+                                <span class="star-btn star-empty" data-target="{{ item.name }}">☆</span>
+                            </h3>
+                            <p>{{ item.meaning }}</p>
+                            <p class="meta"><strong>影响因素：</strong>{{ item.source_tags | join('，') }}</p>
+                            {% set wuge = item.wuge_info if (item.wuge_info is defined and item.wuge_info) else {} %}
+                            {% if wuge %}
+                            <div style="margin-top:10px; padding:10px 12px; background:#f0f7ff; border-radius:10px;">
+                                <p style="margin:0 0 6px 0; font-weight:600; color:#0f4a8a;">三才五格民俗参考</p>
+                                <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:6px; margin-bottom:8px; font-size:0.9rem;">
+                                    <span>天格{{ wuge.get('tian', '') }}</span>
+                                    <span>人格{{ wuge.get('ren', '') }}</span>
+                                    <span>地格{{ wuge.get('di', '') }}</span>
+                                    <span>总格{{ wuge.get('zong', '') }}</span>
+                                    <span>外格{{ wuge.get('wai', '') }}</span>
+                                </div>
+                                <p style="margin:0; font-size:0.88rem; color:#475569;">{{ wuge.get('comment', '暂无五格解析') }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
-                    </div>
+                    <!-- 修复：重新生成按钮移出循环，放在所有名字循环外面 -->
                     <div class="restart-btn-wrap">
                         <button onclick="autoRegen()">重新生成</button>
                     </div>

@@ -94,13 +94,14 @@ def add_full_search_record(user_id, input_data, pillar, analysis):
         # 批量插入每条推荐名字
         for item in analysis["suggestions"]:
             cur.execute("""
-                INSERT INTO search_name_item (record_id, name, meaning, source_tags)
-                VALUES (?,?,?,?)
+                INSERT INTO search_name_item (record_id, name, meaning, source_tags, wuge_info)
+                VALUES (?,?,?,?,?)
             """, (
                 record_id,
                 item["name"],
                 item["meaning"],
-                json.dumps(item["source_tags"], ensure_ascii=False, default=str)
+                json.dumps(item["source_tags"], ensure_ascii=False, default=str),
+                json.dumps(item.get("wuge_info", {}), ensure_ascii=False, default=str)
             ))
         conn.commit()
         print(f"DB写入成功 记录{record_id} 用户{user_id}")
@@ -139,6 +140,8 @@ def get_full_search_by_record_id(record_id, user_id):
     for r in name_rows:
         d = dict(r)
         d["source_tags"] = json.loads(d["source_tags"]) if d["source_tags"] else []
+        # 关键：解析wuge_info
+        d["wuge_info"] = json.loads(d["wuge_info"]) if d["wuge_info"] else {}
         name_list.append(d)
     main_data["suggestions"] = name_list
     conn.close()
