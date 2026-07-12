@@ -148,8 +148,6 @@ def get_full_search_by_record_id(record_id, user_id):
     return main_data
 
 # ==================== 收藏模块 ====================
-# 原：def add_collect(user_id, name, meaning, five_attr, record_id):
-# 修改为增加wuge参数
 def add_collect(user_id, name, meaning, five_attr, record_id, wuge_info=None):
     conn = get_conn()
     exist = conn.execute(

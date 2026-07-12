@@ -171,7 +171,7 @@
                     <div class="meta" style="margin-top:12px;">
                         指定用字：{{ word_need }} · 避讳字：{{ word_avoid }} · 风格偏好：{{ style_type }}
                     </div>
-                    <div class="meta">生肖：{{ bazi.zodiac }} · 五行：{{ bazi.birth_element }} · 时辰：{{ result.time_period }}</div>
+                    <div class="meta">生肖：{{ bazi.zodiac }} · 喜用神：{{ bazi.birth_element }} · 时辰：{{ result.time_period }}</div>
                     <div class="meta">八字全局分析：{{ bazi.balance }}</div>
                     <div>
                         <ul class="list">
@@ -201,10 +201,10 @@
                         <div style="margin-top:10px; padding:10px 12px; background:#f0f7ff; border-radius:10px;">
                             <p style="margin:0 0 6px 0; font-weight:600; color:#0f4a8a;">三才五格民俗参考</p>
                             <div style="display:flex; gap:20px; margin-bottom:8px; font-size:1rem; justify-content:flex-start; flex-wrap:wrap;">
-                                <span>天格{{ wuge.get('tian', '') }}</span>
-                                <span>人格{{ wuge.get('ren', '') }}</span>
-                                <span>地格{{ wuge.get('di', '') }}</span>
-                                <span>总格{{ wuge.get('zong', '') }}</span>
+                                <span>天格{{ wuge.get('tian', '') }} · </span>
+                                <span>人格{{ wuge.get('ren', '') }} · </span>
+                                <span>地格{{ wuge.get('di', '') }} · </span>
+                                <span>总格{{ wuge.get('zong', '') }} · </span>
                                 <span>外格{{ wuge.get('wai', '') }}</span>
                             </div>
                             <p style="margin:0; font-size:0.88rem; color:#475569;">{{ wuge.get('comment', '暂无五格解析') }}</p>

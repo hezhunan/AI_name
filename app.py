@@ -102,7 +102,6 @@ def get_full_birth_pillar(dt: datetime):
     year_zhu = get_year_gz(y)
     month_zhu = get_month_gz(y, m, d)
     day_zhu = get_day_gz(y, m, d)
-    # 修复：补齐第四个参数 h
     shi_zhu, shi_zhi = get_shichen_gz(y, m, d, h)
     zodiac = ZODIAC_MAP[year_zhu[1]]
     hour_text = f"{h}时"
@@ -131,7 +130,6 @@ def local_fallback_name(surname, target_five):
         full = surname + w1 + w2
         poem = random.choice(poems)
         mean = f"出自诗句：{poem}，五行属{target_five}，贴合八字喜用神与生肖宜忌，寓意平安顺遂、前程明朗"
-        # 模拟随机五格数字
         wuge = {
             "tian": random.randint(8,16),
             "ren": random.randint(12,28),
@@ -148,7 +146,7 @@ def local_fallback_name(surname, target_five):
         })
     return res
 
-# AI八字起名【修复：新增三个入参】
+# AI八字起名
 def glm_analysis_name(surname, gender, pillar_info, need_words, avoid_words, style_prefer):
     print("===== Start Zhipu GLM API Call =====")
     print(f"Params: surname={surname}, gender={gender}, pillar={pillar_info}")

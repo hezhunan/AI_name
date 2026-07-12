@@ -3,6 +3,8 @@ Python 版本要求：Python 3.8 及以上版本
 终端安装依赖命令：
     # 核心web框架
     pip install flask
+    # 安装hanzilib Python 专用汉字处理开源库
+    pip install hanzilib
     # 智谱AI官方SDK，用于调用大模型生成八字、姓名
     pip install zai-sdk
 二、使用方式：

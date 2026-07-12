@@ -532,10 +532,10 @@ function renderCollectList(){
             <div class="wuge-panel">
                 <p class="wuge-title">三才五格民俗参考</p>
                 <div class="wuge-row">
-                    <span>天格${w.tian || ''}</span>
-                    <span>人格${w.ren || ''}</span>
-                    <span>地格${w.di || ''}</span>
-                    <span>总格${w.zong || ''}</span>
+                    <span>天格${w.tian || ''} · </span>
+                    <span>人格${w.ren || ''} · </span>
+                    <span>地格${w.di || ''} · </span>
+                    <span>总格${w.zong || ''} · </span>
                     <span>外格${w.wai || ''}</span>
                 </div>
                 <p class="wuge-comment">${w.comment || '暂无五格解析'}</p>
@@ -544,7 +544,7 @@ function renderCollectList(){
         html += `<li style="flex-direction:column;align-items:flex-start;gap:8px;">
         <div style="display:flex;align-items:center;gap:12px;">
             <input class="item-checkbox" data-id="${item.id}" type="checkbox">
-            <span>名字：${item.full_name} 五行：${item.five_attr}</span>
+            <span>名字：${item.full_name} 喜用神：${item.five_attr}</span>
         </div>
         <div style="color:#475569;line-height:1.6;">
             释义：${item.meaning}
@@ -658,7 +658,7 @@ async function openHistoryDetail(index){
         </div>
         <div class="meta">
             生肖：${d.zodiac} · 
-            五行：${d.birth_element} · 
+            喜用神：${d.birth_element} · 
             时辰：${d.time_period}
         </div>
         <div class="meta">八字全局分析：${d.balance}</div>
@@ -681,10 +681,10 @@ async function openHistoryDetail(index){
                     <div class="wuge-panel">
                         <p class="wuge-title">三才五格民俗参考</p>
                         <div class="wuge-row">
-                            <span>天格${w.tian || ''}</span>
-                            <span>人格${w.ren || ''}</span>
-                            <span>地格${w.di || ''}</span>
-                            <span>总格${w.zong || ''}</span>
+                            <span>天格${w.tian || ''} · </span>
+                            <span>人格${w.ren || ''} · </span>
+                            <span>地格${w.di || ''} · </span>
+                            <span>总格${w.zong || ''} · </span>
                             <span>外格${w.wai || ''}</span>
                         </div>
                         <p class="wuge-comment">${w.comment || '暂无五格解析'}</p>

@@ -307,7 +307,7 @@
                     {% set word_avoid = show_bazi.avoid_words if (show_bazi.avoid_words is defined and show_bazi.avoid_words.strip() != '') else '无' %}
                     {% set style_type = show_bazi.style_prefer if (show_bazi.style_prefer is defined and show_bazi.style_prefer.strip() != '') else '简约' %}
                     <div class="meta" style="margin-top:12px;">指定用字：{{ word_need }} · 避讳字：{{ word_avoid }} · 风格偏好：{{ style_type }}</div>
-                    <div class="meta">生肖：{{ show_bazi.zodiac }} · 五行：{{ show_bazi.birth_element }} · 时辰：{{ result.time_period }}</div>
+                    <div class="meta">生肖：{{ show_bazi.zodiac }} · 喜用神：{{ show_bazi.birth_element }} · 时辰：{{ result.time_period }}</div>
                     <div class="meta">八字全局分析：{{ show_bazi.balance }}</div>
                     <div>
                         <ul class="list">
@@ -340,10 +340,10 @@
                             <div class="wuge-panel">
                                 <p class="wuge-title">三才五格民俗参考</p>
                                 <div class="wuge-row">
-                                    <span>天格{{ wuge.get('tian', '') }}</span>
-                                    <span>人格{{ wuge.get('ren', '') }}</span>
-                                    <span>地格{{ wuge.get('di', '') }}</span>
-                                    <span>总格{{ wuge.get('zong', '') }}</span>
+                                    <span>天格{{ wuge.get('tian', '') }} · </span>
+                                    <span>人格{{ wuge.get('ren', '') }} · </span>
+                                    <span>地格{{ wuge.get('di', '') }} · </span>
+                                    <span>总格{{ wuge.get('zong', '') }} · </span>
                                     <span>外格{{ wuge.get('wai', '') }}</span>
                                 </div>
                                 <p class="wuge-comment">{{ wuge.get('comment', '暂无五格解析') }}</p>
