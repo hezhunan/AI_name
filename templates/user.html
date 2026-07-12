@@ -250,7 +250,7 @@
         }
         .wuge-row {
             display:flex;
-            gap:4px;
+            gap:20px;
             margin-bottom:8px;
             font-size:0.9rem;
             justify-content:flex-start;
@@ -681,10 +681,10 @@ async function openHistoryDetail(index){
                     <div class="wuge-panel">
                         <p class="wuge-title">三才五格民俗参考</p>
                         <div class="wuge-row">
-                            <span>天格${w.tian || ''} · </span>
-                            <span>人格${w.ren || ''} · </span>
-                            <span>地格${w.di || ''} · </span>
-                            <span>总格${w.zong || ''} · </span>
+                            <span>天格${w.tian || ''}</span>
+                            <span>人格${w.ren || ''}</span>
+                            <span>地格${w.di || ''}</span>
+                            <span>总格${w.zong || ''}</span>
                             <span>外格${w.wai || ''}</span>
                         </div>
                         <p class="wuge-comment">${w.comment || '暂无五格解析'}</p>
