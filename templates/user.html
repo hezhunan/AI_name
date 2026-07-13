@@ -818,6 +818,7 @@ async function refreshAllStar(){
             } else {
                 star.innerText = "☆";
                 star.classList.remove('star-fill');
+                star.classList.add('star-empty');
             }
         })
     } catch (err) {

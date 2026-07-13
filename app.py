@@ -16,7 +16,7 @@ import calendar
 app = Flask(__name__)
 
 # 智谱AI密钥
-ZHIPU_API_KEY = "a7afddb044ef4948bea53f4c0771f2bc.ajrCfwEf9I2jGbY5"
+ZHIPU_API_KEY = "9f0767e9d98148c7b64a14e0147cb2d6.vHVa9bvkK1rYtoi7"
 client = ZhipuAI(api_key=ZHIPU_API_KEY)
 
 # 天干地支常量
